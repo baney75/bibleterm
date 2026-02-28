@@ -1,0 +1,23 @@
+{
+  "name": "bibleterm",
+  "version": "1.0.0",
+  "description": "Terminal Bible reader with red-letter text",
+  "module": "src/main.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "download": "bun scripts/download-bibles.ts",
+    "build:redletter": "bun scripts/build-redletter.ts",
+    "build": "bun build src/main.ts --compile --outfile bterm",
+    "install": "bun run scripts/install.ts",
+    "install:global": "bun run build && sudo mv bterm /usr/local/bin/bterm"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}
