@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 
 const SOURCE_DIR = resolve(import.meta.dirname || "", "..");
@@ -23,6 +23,7 @@ function installLauncher(): void {
 set -euo pipefail
 
 APP_SRC="${HOME}/.local/share/bibleterm/app/src/main.ts"
+APP_DATA="${HOME}/.local/share/bibleterm/data"
 FALLBACK_SRC="${SOURCE_DIR}/src/main.ts"
 
 if ! command -v bun >/dev/null 2>&1; then
@@ -31,6 +32,7 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 if [[ -f "\${APP_SRC}" ]]; then
+  export BIBLETERM_DATA_DIR="\${APP_DATA}"
   exec bun "\${APP_SRC}" "\$@"
 fi
 
@@ -61,6 +63,8 @@ function main(): void {
 
   ensureDir(BIN_DIR);
   ensureDir(APP_DIR);
+  rmSync(APP_SRC, { recursive: true, force: true });
+  rmSync(APP_DATA, { recursive: true, force: true });
 
   cpSync(SOURCE_SRC, APP_SRC, { recursive: true, force: true });
   cpSync(SOURCE_DATA, APP_DATA, { recursive: true, force: true });

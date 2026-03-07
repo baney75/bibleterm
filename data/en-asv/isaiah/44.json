@@ -28,7 +28,7 @@
       "book": "Isaiah",
       "chapter": "44",
       "verse": "5",
-      "text": "One shall say, I am Jehovah’s; and another shall call himself by the name of Jacob; and another shall subscribe with his hand unto Jehovah, and surname himself by the name of Israel."
+      "text": "One shall say, I am Jehovah's; and another shall call `himself' by the name of Jacob; and another shall subscribe with his hand unto Jehovah, and surname `himself' by the name of Israel."
     },
     {
       "book": "Isaiah",
@@ -70,7 +70,7 @@
       "book": "Isaiah",
       "chapter": "44",
       "verse": "12",
-      "text": "The smith maketh an axe, and worketh in the coals, and fashioneth it with hammers, and worketh it with his strong arm: yea, he is hungry, and his strength faileth; he drinketh no water, and is faint."
+      "text": "The smith `maketh' an axe, and worketh in the coals, and fashioneth it with hammers, and worketh it with his strong arm: yea, he is hungry, and his strength faileth; he drinketh no water, and is faint."
     },
     {
       "book": "Isaiah",
@@ -166,7 +166,7 @@
       "book": "Isaiah",
       "chapter": "44",
       "verse": "28",
-      "text": "That saith of Cyrus, He is my shepherd, and shall perform all my pleasure, even saying of Jerusalem, She shall be built; and of the temple, Thy foundation shall be laid."
+      "text": "That saith of Cyrus, `He is' my shepherd, and shall perform all my pleasure, even saying of Jerusalem, She shall be built; and of the temple, Thy foundation shall be laid."
     }
   ]
 }

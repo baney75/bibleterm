@@ -28,13 +28,13 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "5",
-      "text": "And when these days were fulfilled, the king made a feast unto all the people that were present in Shushan the palace, both great and small, seven days, in the court of the garden of the king’s palace."
+      "text": "And when these days were fulfilled, the king made a feast unto all the people that were present in Shushan the palace, both great and small, seven days, in the court of the garden of the king's palace."
     },
     {
       "book": "Esther",
       "chapter": "1",
       "verse": "6",
-      "text": "There were hangings of white cloth, of green, and of blue, fastened with cords of fine linen and purple to silver rings and pillars of marble: the couches were of gold and silver, upon a pavement of red, and white, and yellow, and black marble."
+      "text": "`There were hangings of' white `cloth', `of' green, and `of' blue, fastened with cords of fine linen and purple to silver rings and pillars of marble: the couches were of gold and silver, upon a pavement of red, and white, and yellow, and black marble."
     },
     {
       "book": "Esther",
@@ -46,7 +46,7 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "8",
-      "text": "And the drinking was according to the law; none could compel: for so the king had appointed to all the officers of his house, that they should do according to every man’s pleasure."
+      "text": "And the drinking was according to the law; none could compel: for so the king had appointed to all the officers of his house, that they should do according to every man's pleasure."
     },
     {
       "book": "Esther",
@@ -70,19 +70,19 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "12",
-      "text": "But the queen Vashti refused to come at the king’s commandment by the chamberlains: therefore was the king very wroth, and his anger burned in him."
+      "text": "But the queen Vashti refused to come at the king's commandment by the chamberlains: therefore was the king very wroth, and his anger burned in him."
     },
     {
       "book": "Esther",
       "chapter": "1",
       "verse": "13",
-      "text": "Then the king said to the wise men, who knew the times (for so was the king’s manner toward all that knew law and judgment;"
+      "text": "Then the king said to the wise men, who knew the times, (for so was the king's manner toward all that knew law and judgment;"
     },
     {
       "book": "Esther",
       "chapter": "1",
       "verse": "14",
-      "text": "and the next unto him were Carshena, Shethar, Admatha, Tarshish, Meres, Marsena, and Memucan, the seven princes of Persia and Media, who saw the king’s face, and sat first in the kingdom),"
+      "text": "and the next unto him were Carshena, Shethar, Admatha, Tarshish, Meres, Marsena, and Memucan, the seven princes of Persia and Media, who saw the king's face, and sat first in the kingdom),"
     },
     {
       "book": "Esther",
@@ -106,7 +106,7 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "18",
-      "text": "And this day will the princesses of Persia and Media who have heard of the deed of the queen say the like unto all the king’s princes. So will there arise much contempt and wrath."
+      "text": "And this day will the princesses of Persia and Media who have heard of the deed of the queen say `the like' unto all the king's princes. So `will there arise' much contempt and wrath."
     },
     {
       "book": "Esther",
@@ -118,7 +118,7 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "20",
-      "text": "And when the king’s decree which he shall make shall be published throughout all his kingdom (for it is great), all the wives will give to their husbands honor, both to great and small."
+      "text": "And when the king's decree which he shall make shall be published throughout all his kingdom (for it is great), all the wives will give to their husbands honor, both to great and small."
     },
     {
       "book": "Esther",
@@ -130,7 +130,7 @@
       "book": "Esther",
       "chapter": "1",
       "verse": "22",
-      "text": "for he sent letters into all the king’s provinces, into every province according to the writing thereof, and to every people after their language, that every man should bear rule in his own house, and should speak according to the language of his people."
+      "text": "for he sent letters into all the king's provinces, into every province according to the writing thereof, and to every people after their language, that every man should bear rule in his own house, and should speak according to the language of his people."
     }
   ]
 }

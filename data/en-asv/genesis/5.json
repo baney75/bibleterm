@@ -16,7 +16,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "3",
-      "text": "And Adam lived a hundred and thirty years, and begat a son in his own likeness, after his image; and called his name Seth:"
+      "text": "And Adam lived a hundred and thirty years, and begat `a son' in his own likeness, after his image; and called his name Seth:"
     },
     {
       "book": "Genesis",
@@ -52,7 +52,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "9",
-      "text": "And Enosh lived ninety years, and begat Kenan:"
+      "text": "And Enosh lived ninety years, and begat Kenan."
     },
     {
       "book": "Genesis",
@@ -94,7 +94,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "16",
-      "text": "and Mahalalel lived after he begat Jared eight hundred and thirty years, and begat sons and daughters:"
+      "text": "And Mahalalel lived after he begat Jared eight hundred and thirty years, and begat sons and daughters:"
     },
     {
       "book": "Genesis",
@@ -118,7 +118,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "20",
-      "text": "and all the days of Jared were nine hundred sixty and two years: and he died."
+      "text": "And all the days of Jared were nine hundred sixty and two years: and he died."
     },
     {
       "book": "Genesis",
@@ -154,13 +154,13 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "26",
-      "text": "and Methuselah lived after he begat Lamech seven hundred eighty and two years, and begat sons and daughters:"
+      "text": "and Methuselah lived after he begat Lamech seven hundred eighty and two years, and begat sons and daughters."
     },
     {
       "book": "Genesis",
       "chapter": "5",
       "verse": "27",
-      "text": "and all the days of Methuselah were nine hundred sixty and nine years: and he died."
+      "text": "And all the days of Methuselah were nine hundred sixty and nine years: and he died."
     },
     {
       "book": "Genesis",
@@ -172,7 +172,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "29",
-      "text": "and he called his name Noah, saying, This same shall comfort us in our work and in the toil of our hands, which cometh because of the ground which Jehovah hath cursed."
+      "text": "and he called his name Noah, saying, This same shall comfort us in our work and in the toil of our hands, `which cometh' because of the ground which Jehovah hath cursed."
     },
     {
       "book": "Genesis",
@@ -190,7 +190,7 @@
       "book": "Genesis",
       "chapter": "5",
       "verse": "32",
-      "text": "And Noah was five hundred years old: and Noah begat Shem, Ham, and Japheth."
+      "text": "And Noah was five hundred years old: And Noah begat Shem, Ham, and Japheth."
     }
   ]
 }

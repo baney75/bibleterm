@@ -6,15 +6,24 @@ Fast offline Bible reader for the terminal (Ghostty, iTerm2, macOS Terminal, Lin
 
 - Offline reading with local data
 - 66-book canonical navigation
-- Multi-translation support (`ASV`, `KJV`, `WEB`)
+- Healthy multi-translation support with bundled `ASV` and `KJV`
 - Ranked full-text search
 - Reference jump (`john 3:16`, `1 jn 4:8`)
-- Red-letter highlighting and quick verse copy
+- Red-letter highlighting and multi-verse copy
 
 ## Requirements
 
 - Bun 1.0+ on your PATH
 - Interactive terminal (TTY)
+
+## Quick Start
+
+```bash
+bun install
+bun run install
+bterm --doctor
+bterm
+```
 
 ## Install
 
@@ -44,6 +53,10 @@ bterm --version
 bterm --doctor
 ```
 
+`--doctor` validates every installed translation and exits nonzero if any installed corpus is unhealthy.
+
+Bundled English imports currently come from `bibleapi/bibleapi-bibles-json` as an interim source. The importer is replaceable, and maintainers should verify licensing before changing redistribution assumptions.
+
 ## Keybinds
 
 - `Up/Down`, `j/k`: move verse (or books when sidebar focused)
@@ -52,8 +65,10 @@ bterm --doctor
 - `PgUp/PgDn`: jump 10 verses
 - `g` / `G`: top/bottom of chapter
 - `/`: search text or reference
-- `Enter` or `y`: copy selected verse
+- `v`: mark a verse range for multi-verse copy
+- `Enter` or `y`: copy selected verse or marked range
 - `Tab`: toggle sidebar focus
+- `Esc`: clear marked range
 - `t`: translation picker
 - `?`: help modal
 - `q`: quit
@@ -62,20 +77,47 @@ bterm --doctor
 
 ```bash
 bun run dev
+bun run check
+bun run verify
 bun run test
 bun run typecheck
 bun run build
 ```
 
+## Maintainer Workflow
+
+1. Make changes in `src/`.
+2. Run `bun run verify`.
+3. Review staged files: `git diff --staged`.
+4. Commit with clear intent in message.
+
+For helpers, see `CONTRIBUTING.md` and `scripts/commit-ready.sh`.
+
+## Maintainer Safety Nets
+
+- CI runs `bun run ci` on every push/PR: `.github/workflows/ci.yml`
+- Dependency review runs on PRs: `.github/workflows/dependency-review.yml`
+- Dependabot keeps Bun deps and GitHub Actions current: `.github/dependabot.yml`
+- PR template and issue templates enforce reproducible reports and checks
+
 ## Verification
 
 ```bash
-bterm --doctor
+bun run verify
 ```
 
 Expected healthy output includes:
 
+- `installed: ASV, KJV`
+- `healthy: ASV, KJV`
 - `books: 66`
 - `chapters: 1189`
-- `verses: 31102`
+- `verses: 31103`
 - `status: ok`
+
+## Project Docs
+
+- Contributor guide: `CONTRIBUTING.md`
+- Architecture map: `docs/ARCHITECTURE.md`
+- Release checklist: `docs/RELEASE_CHECKLIST.md`
+- Changelog: `CHANGELOG.md`

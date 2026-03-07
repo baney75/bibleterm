@@ -3,11 +3,18 @@
 import { getState, setState, subscribe, type Translation } from "./state";
 import {
   getAvailableTranslations,
+  getInstalledTranslations,
+  inspectTranslation,
   loadBible,
   type Bible,
   type Book,
   type Chapter,
 } from "./data/loader";
+import {
+  buildCopyPayload,
+  getVerseSelectionRange,
+  isVerseWithinSelection,
+} from "./passage";
 import { buildSearchIndex, getSearchTerms, search, type SearchResult } from "./search";
 import { isRedLetter } from "./data/redletter";
 import { parseReferenceInput, type ParsedReference } from "./reference";
@@ -21,11 +28,13 @@ const ALT_SCREEN_OFF = `${ESC}[?1049l`;
 const RESET = `${ESC}[0m`;
 const BOLD = `${ESC}[1m`;
 const DIM = `${ESC}[2m`;
-const REVERSE = `${ESC}[7m`;
 const FG_CYAN = `${ESC}[36m`;
 const FG_YELLOW = `${ESC}[33m`;
 const FG_RED = `${ESC}[31m`;
 const FG_WHITE = `${ESC}[37m`;
+const FG_BRIGHT_RED = `${ESC}[91m`;
+const FG_BRIGHT_WHITE = `${ESC}[97m`;
+const BG_SUBTLE = `${ESC}[48;5;236m`;
 
 type ModalKind = "translation" | "help";
 
@@ -39,6 +48,7 @@ class BibleTerm {
 
   private selectedVerseIndex = 0;
   private readerStartVerse = 0;
+  private copyAnchorVerseIndex: number | null = null;
 
   private searchResults: SearchResult[] = [];
   private searchSelectedIndex = 0;
@@ -53,16 +63,16 @@ class BibleTerm {
   private cleanedUp = false;
 
   init(): void {
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      console.error("bterm requires an interactive terminal (TTY).");
-      process.exit(1);
-    }
-
     this.updateTerminalSize();
 
     this.availableTranslations = getAvailableTranslations();
     if (this.availableTranslations.length === 0) {
-      console.error("No Bible data found. Run: bun run install");
+      console.error("No healthy Bible data found. Run: bun run download && bun run install");
+      process.exit(1);
+    }
+
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      console.error("bterm requires an interactive terminal (TTY).");
       process.exit(1);
     }
 
@@ -150,6 +160,7 @@ class BibleTerm {
 
     this.selectedVerseIndex = 0;
     this.readerStartVerse = 0;
+    this.copyAnchorVerseIndex = null;
     this.searchResults = [];
     this.searchSelectedIndex = 0;
     this.searchOffset = 0;
@@ -194,6 +205,8 @@ class BibleTerm {
     }
   }
 
+  // Terminals can batch multiple escape sequences and UTF-8 chars in one read.
+  // Split into normalized tokens so key handling stays deterministic.
   private tokenizeInput(chunk: string): string[] {
     const tokens: string[] = [];
     let i = 0;
@@ -264,6 +277,11 @@ class BibleTerm {
     const focusSidebar = state.focus === "sidebar";
 
     switch (input) {
+      case "\x1b":
+        if (this.copyAnchorVerseIndex !== null) {
+          this.clearCopySelection();
+        }
+        return;
       case "q":
       case "Q":
         this.quit();
@@ -307,10 +325,14 @@ class BibleTerm {
         this.needsRender = true;
         return;
       }
+      case "v":
+      case "V":
+        this.toggleCopySelection();
+        return;
       case "y":
       case "Y":
       case "\r":
-        this.copyCurrentVerse();
+        this.copyCurrentPassage();
         return;
       case "/":
         setState({ mode: "search", searchQuery: "" });
@@ -492,6 +514,7 @@ class BibleTerm {
       this.selectedVerseIndex = 0;
     }
     this.readerStartVerse = Math.max(0, this.selectedVerseIndex - 2);
+    this.copyAnchorVerseIndex = null;
 
     this.searchResults = [];
     this.searchSelectedIndex = 0;
@@ -518,6 +541,7 @@ class BibleTerm {
     if (state.currentChapter < book.chapters.length) {
       setState({ currentChapter: state.currentChapter + 1 });
       this.selectedVerseIndex = 0;
+      this.copyAnchorVerseIndex = null;
       this.needsRender = true;
       return;
     }
@@ -530,6 +554,7 @@ class BibleTerm {
     if (state.currentChapter > 1) {
       setState({ currentChapter: state.currentChapter - 1 });
       this.selectedVerseIndex = 0;
+      this.copyAnchorVerseIndex = null;
       this.needsRender = true;
       return;
     }
@@ -543,6 +568,7 @@ class BibleTerm {
       currentChapter: previousBook.chapters.length,
     });
     this.selectedVerseIndex = 0;
+    this.copyAnchorVerseIndex = null;
     this.needsRender = true;
   }
 
@@ -555,6 +581,7 @@ class BibleTerm {
       currentChapter: 1,
     });
     this.selectedVerseIndex = 0;
+    this.copyAnchorVerseIndex = null;
     this.needsRender = true;
   }
 
@@ -567,19 +594,42 @@ class BibleTerm {
       currentChapter: 1,
     });
     this.selectedVerseIndex = 0;
+    this.copyAnchorVerseIndex = null;
     this.needsRender = true;
   }
 
-  private copyCurrentVerse(): void {
+  private toggleCopySelection(): void {
+    if (this.copyAnchorVerseIndex === this.selectedVerseIndex) {
+      this.clearCopySelection();
+      return;
+    }
+
+    this.copyAnchorVerseIndex = this.selectedVerseIndex;
+    this.flash(`Selection start: verse ${this.selectedVerseIndex + 1}`);
+  }
+
+  private clearCopySelection(): void {
+    if (this.copyAnchorVerseIndex === null) return;
+    this.copyAnchorVerseIndex = null;
+    this.flash("Selection cleared");
+  }
+
+  private copyCurrentPassage(): void {
     const book = this.getCurrentBook();
     const chapter = this.getCurrentChapter();
     if (!book || !chapter) return;
-    const verse = chapter.verses[this.selectedVerseIndex];
-    if (!verse) return;
+
+    const range = getVerseSelectionRange(this.selectedVerseIndex, this.copyAnchorVerseIndex);
+    const verses = chapter.verses.slice(range.start, range.end + 1);
+    if (verses.length === 0) return;
 
     const translation = getState().translation;
-    const citation = `${book.name} ${chapter.chapter}:${verse.verse} ${translation}`;
-    const payload = `${book.name}\n\n${verse.text}\n\n${citation}`;
+    const { citation, payload } = buildCopyPayload({
+      bookName: book.name,
+      chapter: chapter.chapter,
+      translation,
+      verses,
+    });
 
     try {
       Bun.spawnSync(["pbcopy"], { stdin: Buffer.from(payload) });
@@ -659,7 +709,7 @@ class BibleTerm {
     const currentBookIndex = this.getCurrentBookIndex();
 
     const lines: string[] = [];
-    const focused = state.focus === "sidebar" ? REVERSE : "";
+    const focused = state.focus === "sidebar" ? `${BG_SUBTLE}${FG_BRIGHT_WHITE}` : "";
     lines.push(`${focused}${BOLD} BOOKS ${RESET}`);
 
     const chapterCount = currentBook?.chapters.length ?? 0;
@@ -694,7 +744,10 @@ class BibleTerm {
     const lines: string[] = [];
     lines.push(`${BOLD}${FG_WHITE}${book.name} ${chapter.chapter}${RESET}`);
     const selectedLabel = `${this.selectedVerseIndex + 1}/${chapter.verses.length}`;
-    lines.push(`${DIM}Verse ${selectedLabel}  PgUp/PgDn jump 10${RESET}`);
+    const selectionLabel = this.getSelectionLabel(chapter);
+    lines.push(
+      `${DIM}Verse ${selectedLabel}${selectionLabel ? `  ${selectionLabel}` : ""}  PgUp/PgDn jump 10${RESET}`
+    );
 
     const usable = Math.max(1, height - 2);
     const contentWidth = Math.max(8, Math.min(width - 8, 512)); // Cap max width to prevent overflow
@@ -705,28 +758,54 @@ class BibleTerm {
       if (lines.length >= height) break;
       const verse = chapter.verses[i];
       const selected = i === this.selectedVerseIndex;
+      const inSelection = isVerseWithinSelection(
+        i,
+        this.selectedVerseIndex,
+        this.copyAnchorVerseIndex
+      );
       const red = isRedLetter(book.slug, chapter.chapter, verse.verse);
       const verseNo = `${String(verse.verse).padStart(3, " ")}`;
       const wrapped = this.wrapText(verse.text, contentWidth);
 
-      const prefix = selected ? `${FG_CYAN}>${RESET}` : " ";
-      const styleOn = selected ? REVERSE : "";
-      const textColor = red ? FG_RED : "";
+      const prefix = selected ? `${FG_CYAN}${BOLD}>${RESET}` : inSelection ? `${FG_CYAN}+${RESET}` : " ";
+      const verseNoStyle = selected ? `${FG_YELLOW}${BOLD}` : inSelection ? FG_CYAN : DIM;
+      const paragraphMarker = verse.paragraphStart ? `${DIM}¶${RESET}` : " ";
+      const textStyle = `${selected ? BOLD : ""}${red ? FG_BRIGHT_RED : FG_BRIGHT_WHITE}`;
 
       if (wrapped.length > 0) {
         lines.push(
-          `${styleOn}${prefix} ${DIM}${verseNo}${RESET}${styleOn} ${textColor}${wrapped[0]}${RESET}`
+          `${prefix} ${verseNoStyle}${verseNo}${RESET} ${paragraphMarker} ${textStyle}${wrapped[0]}${RESET}`
         );
       }
 
       for (let w = 1; w < wrapped.length; w++) {
         if (lines.length >= height) break;
-        lines.push(`${styleOn}      ${textColor}${wrapped[w]}${RESET}`);
+        const continuationPrefix = selected
+          ? `${FG_CYAN}${BOLD}:${RESET}`
+          : inSelection
+            ? `${FG_CYAN}:${RESET}`
+            : " ";
+        lines.push(`${continuationPrefix}       ${textStyle}${wrapped[w]}${RESET}`);
       }
     }
 
     while (lines.length < height) lines.push("");
     return lines.slice(0, height);
+  }
+
+  private getSelectionLabel(chapter: Chapter): string {
+    if (this.copyAnchorVerseIndex === null) return "";
+
+    const range = getVerseSelectionRange(this.selectedVerseIndex, this.copyAnchorVerseIndex);
+    const firstVerse = chapter.verses[range.start];
+    const lastVerse = chapter.verses[range.end];
+    if (!firstVerse || !lastVerse) return "";
+
+    if (firstVerse.verse === lastVerse.verse) {
+      return `Mark ${firstVerse.verse}`;
+    }
+
+    return `Copy ${firstVerse.verse}-${lastVerse.verse}`;
   }
 
   private estimateVerseLineCount(text: string, contentWidth: number): number {
@@ -738,6 +817,8 @@ class BibleTerm {
     contentWidth: number,
     availableLines: number
   ): number {
+    // Keep the selected verse visible even when verse text wraps into many lines.
+    // First, move start forward until selected fits. Then pull back for context.
     const maxVerseIndex = Math.max(0, chapter.verses.length - 1);
     const selected = Math.min(Math.max(0, this.selectedVerseIndex), maxVerseIndex);
 
@@ -798,7 +879,7 @@ class BibleTerm {
       const snippet = this.highlightTerms(this.truncate(r.text, available), terms);
       const scoreTag = `${DIM}${String(r.score).padStart(3, " ")}${RESET}`;
       const row = `${marker} ${FG_YELLOW}${ref}${RESET} ${snippet} ${scoreTag}`;
-      lines.push(selected ? `${REVERSE}${row}${RESET}` : row);
+      lines.push(selected ? `${BOLD}${row}${RESET}` : row);
     }
 
     while (lines.length < bodyHeight) lines.push("");
@@ -808,12 +889,14 @@ class BibleTerm {
   private highlightTerms(text: string, terms: string[]): string {
     if (terms.length === 0) return text;
     let out = text;
-    for (const term of terms.slice(0, 4)) {
+    const unique = Array.from(new Set(terms.filter((term) => term.length >= 2))).slice(0, 6);
+    unique.sort((a, b) => b.length - a.length);
+
+    for (const term of unique) {
       if (term.length < 2) continue;
-      const idx = out.toLowerCase().indexOf(term.toLowerCase());
-      if (idx < 0) continue;
-      const end = idx + term.length;
-      out = `${out.slice(0, idx)}${FG_YELLOW}${out.slice(idx, end)}${RESET}${out.slice(end)}`;
+      const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(${safe})`, "gi");
+      out = out.replace(regex, `${FG_YELLOW}$1${RESET}`);
     }
     return out;
   }
@@ -830,7 +913,7 @@ class BibleTerm {
       const selected = i === this.modalIndex;
       const marker = selected ? `${FG_CYAN}>${RESET}` : " ";
       const row = `${marker} ${t}`;
-      lines.push(selected ? `${REVERSE}${row}${RESET}` : row);
+      lines.push(selected ? `${BOLD}${row}${RESET}` : row);
     }
 
     lines.push("");
@@ -853,8 +936,10 @@ class BibleTerm {
     lines.push("Actions:");
     lines.push("  /          search text or reference (john 3:16)");
     lines.push("  t          translation picker");
-    lines.push("  y          copy current verse");
+    lines.push("  v          mark range start (move, then y to copy multiple verses)");
+    lines.push("  y / Enter  copy current verse or marked range");
     lines.push("  Tab        toggle sidebar focus");
+    lines.push("  Esc        clear marked range");
     lines.push("  q          quit");
     lines.push("");
     lines.push(`${DIM}Press Esc, Enter, or q to close help${RESET}`);
@@ -866,7 +951,8 @@ class BibleTerm {
   private renderStatusLine(): string {
     const state = getState();
     const hints: Record<string, string> = {
-      reading: "[Tab] focus [Arrows/jk] move [Enter/y] copy [/] search [t] translation [?] help [q] quit",
+      reading:
+        "[Tab] focus [Arrows/jk] move [v] mark [Enter/y] copy [Esc] clear [/] search [t] translation [?] help [q] quit",
       search: "[Type] query [Up/Down] select [Enter] open [Esc] close",
       modal: this.modalKind === "help"
         ? "[Esc/Enter/q] close help"
@@ -949,6 +1035,7 @@ class BibleTerm {
   }
 
   private cleanupAndExit(code: number = 0, errorMessage?: string): void {
+    // Idempotent cleanup avoids broken terminals on repeated error paths.
     if (this.cleanedUp) {
       process.exit(code);
       return;
@@ -980,30 +1067,43 @@ function printHelp(): void {
   console.log("  bterm --version");
   console.log("  bterm --doctor");
   console.log("");
-  console.log("Reader keys: arrows/jk move, Enter or y copy, / search, t translation, ? help, q quit");
+  console.log("Reader keys: arrows/jk move, v mark, Enter or y copy, Esc clear, / search, t translation, ? help, q quit");
 }
 
 function runDoctor(): void {
-  const translations = getAvailableTranslations();
+  const installed = getInstalledTranslations();
+  const healthy = getAvailableTranslations();
   console.log(`bterm ${VERSION}`);
-  console.log(`translations: ${translations.join(", ") || "none"}`);
+  console.log(`installed: ${installed.join(", ") || "none"}`);
 
-  const bible = loadBible("ASV");
-  if (!bible) {
-    console.log("status: error (ASV not loadable)");
+  if (installed.length === 0) {
+    console.log("healthy: none");
+    console.log("status: error (no installed translations)");
     process.exit(1);
   }
 
-  const totalChapters = bible.books.reduce((sum, b) => sum + b.chapters.length, 0);
-  const totalVerses = bible.books.reduce(
-    (sum, b) => sum + b.chapters.reduce((s, ch) => s + ch.verses.length, 0),
-    0
-  );
+  let allHealthy = true;
+  for (const translation of installed) {
+    const health = inspectTranslation(translation, { allowInvalid: true });
+    if (!health.installed) {
+      allHealthy = false;
+      console.log(`${translation}: missing`);
+      continue;
+    }
 
-  console.log(`books: ${bible.books.length}`);
-  console.log(`chapters: ${totalChapters}`);
-  console.log(`verses: ${totalVerses}`);
-  console.log("status: ok");
+    const stats = health.stats;
+    const summary = `${stats?.totalBooks ?? 0} books, ${stats?.totalChapters ?? 0} chapters, ${stats?.totalVerses ?? 0} verses`;
+    if (health.healthy) {
+      console.log(`${translation}: ok (${summary})`);
+    } else {
+      allHealthy = false;
+      console.log(`${translation}: invalid (${summary}; ${health.warningCount} warnings)`);
+    }
+  }
+
+  console.log(`healthy: ${healthy.join(", ") || "none"}`);
+  console.log(`status: ${allHealthy && healthy.length > 0 ? "ok" : "error"}`);
+  process.exit(allHealthy && healthy.length > 0 ? 0 : 1);
 }
 
 const args = process.argv.slice(2);

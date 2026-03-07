@@ -2,6 +2,8 @@
 
 export type Translation = "ASV" | "KJV" | "WEB" | "YLT";
 
+export const DEFAULT_SHIPPED_TRANSLATIONS: Translation[] = ["ASV", "KJV"];
+
 export type FocusTarget = "sidebar" | "reader";
 
 export type Mode = "reading" | "search" | "modal";
@@ -36,7 +38,7 @@ export interface AppState {
 }
 
 export const initialState: AppState = {
-  translation: "KJV",
+  translation: "ASV",
   focus: "reader",
   mode: "reading",
   currentBook: "genesis",

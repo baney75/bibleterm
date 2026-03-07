@@ -4,7 +4,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "1",
-      "text": "After these things Jesus went away to the other side of the sea of Galilee, which is the sea of Tiberias."
+      "text": "After these things Jesus went away to the other side of the sea of Galilee, which is `the sea' of Tiberias."
     },
     {
       "book": "John",
@@ -40,13 +40,13 @@
       "book": "John",
       "chapter": "6",
       "verse": "7",
-      "text": "Philip answered him, Two hundred shillings’ worth of bread is not sufficient for them, that every one may take a little."
+      "text": "Philip answered him, Two hundred shillings' worth of bread is not sufficient for them, that every one may take a little."
     },
     {
       "book": "John",
       "chapter": "6",
       "verse": "8",
-      "text": "One of his disciples, Andrew, Simon Peter’s brother, saith unto him,"
+      "text": "One of his disciples, Andrew, Simon Peter's brother, saith unto him,"
     },
     {
       "book": "John",
@@ -130,7 +130,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "22",
-      "text": "On the morrow the multitude that stood on the other side of the sea saw that there was no other boat there, save one, and that Jesus entered not with his disciples into the boat, but that his disciples went away alone"
+      "text": "On the morrow the multitude that stood on the other side of the sea saw that there was no other boat there, save one, and that Jesus entered not with his disciples into the boat, but `that' his disciples went away alone"
     },
     {
       "book": "John",
@@ -208,7 +208,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "35",
-      "text": "Jesus said unto them, I am the bread of life: he that cometh to me shall not hunger, and he that believeth on me shall never thirst."
+      "text": "Jesus said unto them. I am the bread of life: he that cometh to me shall not hunger, and he that believeth on me shall never thirst."
     },
     {
       "book": "John",
@@ -322,7 +322,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "54",
-      "text": "He that eateth my flesh and drinketh my blood hath eternal life; and I will raise him up at the last day."
+      "text": "He that eateth my flesh and drinketh my blood hath eternal life: and I will raise him up at the last day."
     },
     {
       "book": "John",
@@ -358,7 +358,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "60",
-      "text": "Many therefore of his disciples, when they heard this, said, This is a hard saying; who can hear it?"
+      "text": "Many therefore of his disciples, when the heard `this', said, This is a hard saying; who can hear it?"
     },
     {
       "book": "John",
@@ -370,13 +370,13 @@
       "book": "John",
       "chapter": "6",
       "verse": "62",
-      "text": "What then if ye should behold the Son of man ascending where he was before?"
+      "text": "`What' then if ye should behold the Son of man ascending where he was before?"
     },
     {
       "book": "John",
       "chapter": "6",
       "verse": "63",
-      "text": "It is the spirit that giveth life; the flesh profiteth nothing: the words that I have spoken unto you are spirit, and are life."
+      "text": "It is the spirit that giveth life; the flesh profiteth nothing: the words that I have spoken unto you are spirit, are are life."
     },
     {
       "book": "John",
@@ -424,7 +424,7 @@
       "book": "John",
       "chapter": "6",
       "verse": "71",
-      "text": "Now he spake of Judas the son of Simon Iscariot, for he it was that should betray him, being one of the twelve."
+      "text": "Now he spake of Judas `the son' of Simon Iscariot, for he it was that should betray him, `being' one of the twelve."
     }
   ]
 }

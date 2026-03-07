@@ -1,26 +1,28 @@
 /** bibleterm - Bible Data Loader
- * Loads and normalizes Bible JSON data from wldeh format
+ * Loads and normalizes persisted per-chapter Bible JSON data.
  */
 
 import { readFileSync, readdirSync, existsSync } from "fs";
-import { join, resolve } from "path";
+import { basename, join, resolve } from "path";
 import type { Translation } from "../state.ts";
+import { BOOK_NAMES, CANONICAL_ORDER, getBookSlugCandidates } from "./canon";
+import { sanitizeVerseText } from "./sanitize";
 
-// wldeh API format
-export interface WldehVerse {
+export interface StoredVerseRecord {
   book: string;
   chapter: string;
   verse: string;
   text: string;
 }
 
-export interface WldehChapter {
-  data: WldehVerse[];
+export interface StoredChapterFile {
+  data: StoredVerseRecord[];
 }
 
 // Internal Bible format
 export interface Verse {
   verse: number;
+  paragraphStart?: boolean;
   text: string;
 }
 
@@ -41,118 +43,18 @@ export interface Bible {
   books: Book[];
 }
 
-// Book abbreviation to name mapping (supports both hyphenated and non-hyphenated)
-const BOOK_NAMES: Record<string, string> = {
-  genesis: "Genesis",
-  exodus: "Exodus",
-  leviticus: "Leviticus",
-  numbers: "Numbers",
-  deuteronomy: "Deuteronomy",
-  joshua: "Joshua",
-  judges: "Judges",
-  ruth: "Ruth",
-  "1-samuel": "1 Samuel",
-  "1samuel": "1 Samuel",
-  "2-samuel": "2 Samuel",
-  "2samuel": "2 Samuel",
-  "1-kings": "1 Kings",
-  "1kings": "1 Kings",
-  "2-kings": "2 Kings",
-  "2kings": "2 Kings",
-  "1-chronicles": "1 Chronicles",
-  "1chronicles": "1 Chronicles",
-  "2-chronicles": "2 Chronicles",
-  "2chronicles": "2 Chronicles",
-  ezra: "Ezra",
-  nehemiah: "Nehemiah",
-  esther: "Esther",
-  job: "Job",
-  psalms: "Psalms",
-  proverbs: "Proverbs",
-  ecclesiastes: "Ecclesiastes",
-  "song-of-solomon": "Song of Solomon",
-  isaiah: "Isaiah",
-  jeremiah: "Jeremiah",
-  lamentations: "Lamentations",
-  ezekiel: "Ezekiel",
-  daniel: "Daniel",
-  hosea: "Hosea",
-  joel: "Joel",
-  amos: "Amos",
-  obadiah: "Obadiah",
-  jonah: "Jonah",
-  micah: "Micah",
-  nahum: "Nahum",
-  habakkuk: "Habakkuk",
-  zephaniah: "Zephaniah",
-  haggai: "Haggai",
-  zechariah: "Zechariah",
-  malachi: "Malachi",
-  matthew: "Matthew",
-  mark: "Mark",
-  luke: "Luke",
-  john: "John",
-  acts: "Acts",
-  romans: "Romans",
-  "1-corinthians": "1 Corinthians",
-  "1corinthians": "1 Corinthians",
-  "2-corinthians": "2 Corinthians",
-  "2corinthians": "2 Corinthians",
-  galatians: "Galatians",
-  ephesians: "Ephesians",
-  philippians: "Philippians",
-  colossians: "Colossians",
-  "1-thessalonians": "1 Thessalonians",
-  "1thessalonians": "1 Thessalonians",
-  "2-thessalonians": "2 Thessalonians",
-  "2thessalonians": "2 Thessalonians",
-  "1-timothy": "1 Timothy",
-  "1timothy": "1 Timothy",
-  "2-timothy": "2 Timothy",
-  "2timothy": "2 Timothy",
-  titus: "Titus",
-  philemon: "Philemon",
-  hebrews: "Hebrews",
-  james: "James",
-  "1-peter": "1 Peter",
-  "1peter": "1 Peter",
-  "2-peter": "2 Peter",
-  "2peter": "2 Peter",
-  "1-john": "1 John",
-  "1john": "1 John",
-  "2-john": "2 John",
-  "2john": "2 John",
-  "3-john": "3 John",
-  "3john": "3 John",
-  jude: "Jude",
-  revelation: "Revelation",
-};
-
-// Expected book order (canonical order) - non-hyphenated format preferred
-const CANONICAL_ORDER = [
-  "genesis", "exodus", "leviticus", "numbers", "deuteronomy",
-  "joshua", "judges", "ruth", "1samuel", "2samuel",
-  "1kings", "2kings", "1chronicles", "2chronicles", "ezra",
-  "nehemiah", "esther", "job", "psalms", "proverbs",
-  "ecclesiastes", "song-of-solomon", "isaiah", "jeremiah", "lamentations",
-  "ezekiel", "daniel", "hosea", "joel", "amos",
-  "obadiah", "jonah", "micah", "nahum", "habakkuk",
-  "zephaniah", "haggai", "zechariah", "malachi",
-  "matthew", "mark", "luke", "john", "acts",
-  "romans", "1corinthians", "2corinthians", "galatians", "ephesians",
-  "philippians", "colossians", "1thessalonians", "2thessalonians",
-  "1timothy", "2timothy", "titus", "philemon", "hebrews",
-  "james", "1peter", "2peter", "1john", "2john", "3john",
-  "jude", "revelation"
-];
-
 /**
- * Normalize wldeh verse data to internal Verse format
+ * Normalize a stored verse record to the internal runtime Verse format.
  */
-function normalizeVerse(wldehVerse: WldehVerse): Verse {
+function normalizeVerse(record: StoredVerseRecord, translation: Translation): Verse {
+  const chapter = parseInt(record.chapter, 10);
+  const verse = parseInt(record.verse, 10);
+  const sanitized = sanitizeVerseText(record.text, translation, chapter, verse);
+
   return {
-    verse: parseInt(wldehVerse.verse, 10),
-    text: wldehVerse.text,
+    verse,
+    paragraphStart: sanitized.paragraphStart,
+    text: sanitized.text,
   };
 }
 
@@ -161,7 +63,8 @@ function normalizeVerse(wldehVerse: WldehVerse): Verse {
  */
 function loadChapter(
   bookDir: string,
-  chapterNum: number
+  chapterNum: number,
+  translation: Translation
 ): Chapter | null {
   const chapterPath = join(bookDir, `${chapterNum}.json`);
 
@@ -171,13 +74,13 @@ function loadChapter(
 
   try {
     const content = readFileSync(chapterPath, "utf-8");
-    const chapterData: WldehChapter = JSON.parse(content);
+    const chapterData: StoredChapterFile = JSON.parse(content);
 
     if (!chapterData.data || !Array.isArray(chapterData.data)) {
       throw new Error(`Invalid chapter data format in ${chapterPath}`);
     }
 
-    const verses = chapterData.data.map(normalizeVerse);
+    const verses = chapterData.data.map((verse) => normalizeVerse(verse, translation));
 
     return {
       chapter: chapterNum,
@@ -195,17 +98,13 @@ function loadChapter(
  */
 function loadBook(
   translationDir: string,
-  bookSlug: string
+  bookSlug: string,
+  translation: Translation
 ): Book | null {
   let bookDir = join(translationDir, bookSlug);
 
   if (!existsSync(bookDir)) {
-    const candidates = [
-      bookSlug.replace(/^(\d)([a-z])/, "$1-$2"),
-      bookSlug.replace(/^(\d)-([a-z])/, "$1$2"),
-    ];
-
-    for (const candidate of candidates) {
+    for (const candidate of getBookSlugCandidates(bookSlug)) {
       const candidateDir = join(translationDir, candidate);
       if (existsSync(candidateDir)) {
         bookDir = candidateDir;
@@ -229,7 +128,7 @@ function loadBook(
     const chapters: Chapter[] = [];
 
     for (const chapterNum of chapterFiles) {
-      const chapter = loadChapter(bookDir, chapterNum);
+      const chapter = loadChapter(bookDir, chapterNum, translation);
       if (chapter) {
         chapters.push(chapter);
       }
@@ -239,9 +138,8 @@ function loadBook(
       return null;
     }
 
-    // Get actual slug from directory path (handles both hyphenated and non-hyphenated)
-    const actualSlug = bookDir.split('/').pop() || bookSlug;
-    
+    const actualSlug = basename(bookDir) || bookSlug;
+
     return {
       name: BOOK_NAMES[actualSlug] || BOOK_NAMES[bookSlug] || bookSlug,
       slug: actualSlug,
@@ -254,16 +152,36 @@ function loadBook(
   }
 }
 
-/**
- * Load Bible data for a specific translation
- * @param translation - Translation code (e.g., "ASV", "KJV")
- * @returns Bible object or null if data not found
- */
-function getDataDir(): string {
-  // For compiled binary: check relative to executable
-  // For dev: check relative to source file
-  
-  // Get the binary's directory (works for compiled binaries)
+const KNOWN_TRANSLATIONS: Translation[] = ["ASV", "KJV", "WEB", "YLT"];
+
+export interface LoaderOptions {
+  allowInvalid?: boolean;
+  dataDir?: string;
+}
+
+export interface TranslationHealth {
+  installed: boolean;
+  healthy: boolean;
+  stats: ValidationResult["stats"] | null;
+  translation: Translation;
+  warningCount: number;
+  warnings: string[];
+}
+
+const bibleCache = new Map<string, Bible | null>();
+const translationHealthCache = new Map<string, TranslationHealth>();
+
+export function resetLoaderCaches(): void {
+  bibleCache.clear();
+  translationHealthCache.clear();
+}
+
+function resolveDataDir(override?: string): string {
+  if (override) return resolve(override);
+  if (process.env.BIBLETERM_DATA_DIR) {
+    return resolve(process.env.BIBLETERM_DATA_DIR);
+  }
+
   let binaryDir = "";
   try {
     // @ts-ignore - Bun specific
@@ -273,105 +191,177 @@ function getDataDir(): string {
   } catch {
     // Fallback
   }
-  
+
   const possiblePaths = [
-    // Standard install location (~/.local/share/bibleterm/data)
-    resolve(process.env.HOME || "", ".local", "share", "bibleterm", "data"),
-    // System-wide install location
-    resolve("/usr", "local", "share", "bibleterm", "data"),
-    // Runtime location (where binary is run from)
     resolve(process.cwd(), "data"),
-    // Binary location (next to compiled binary)
+    resolve(process.env.HOME || "", ".local", "share", "bibleterm", "data"),
+    resolve("/usr", "local", "share", "bibleterm", "data"),
     resolve(binaryDir || "", "..", "data"),
     resolve(binaryDir || "", "data"),
-    // Dev location (relative to source)
     resolve(import.meta.dirname || "", "..", "..", "..", "data"),
     resolve(import.meta.dirname || "", "..", "..", "data"),
-    // Project root fallback
     resolve(__dirname || "", "..", "..", "data"),
   ];
-  
+
   for (const path of possiblePaths) {
     if (existsSync(path)) {
       return path;
     }
   }
-  
-  // Default to standard location
+
   return resolve(process.env.HOME || process.cwd(), ".local", "share", "bibleterm", "data");
 }
 
-export function loadBible(translation: Translation): Bible | null {
-  const dataDir = getDataDir();
-  const translationSlug = `en-${translation.toLowerCase()}`;
-  const translationDir = join(dataDir, translationSlug);
+function getCacheKey(dataDir: string, translation: Translation): string {
+  return `${resolve(dataDir)}::${translation}`;
+}
 
+function getTranslationDir(dataDir: string, translation: Translation): string {
+  return join(dataDir, `en-${translation.toLowerCase()}`);
+}
+
+function readBible(translation: Translation, dataDir: string): Bible | null {
+  const cacheKey = getCacheKey(dataDir, translation);
+  if (bibleCache.has(cacheKey)) {
+    return bibleCache.get(cacheKey) ?? null;
+  }
+
+  const translationDir = getTranslationDir(dataDir, translation);
   if (!existsSync(translationDir)) {
-    console.error(`Translation directory not found: ${translationDir}`);
+    bibleCache.set(cacheKey, null);
     return null;
   }
 
   const books: Book[] = [];
-
-  // Load books in canonical order
   for (const bookSlug of CANONICAL_ORDER) {
-    const book = loadBook(translationDir, bookSlug);
+    const book = loadBook(translationDir, bookSlug, translation);
     if (book) {
       books.push(book);
     }
   }
 
-  if (books.length === 0) {
-    console.error(`No books loaded for translation: ${translation}`);
+  const bible = books.length === 0
+    ? null
+    : {
+        translation,
+        books,
+      };
+
+  bibleCache.set(cacheKey, bible);
+  return bible;
+}
+
+export function inspectTranslation(
+  translation: Translation,
+  options: LoaderOptions = {}
+): TranslationHealth {
+  const dataDir = resolveDataDir(options.dataDir);
+  const cacheKey = getCacheKey(dataDir, translation);
+
+  if (translationHealthCache.has(cacheKey)) {
+    return translationHealthCache.get(cacheKey)!;
+  }
+
+  const translationDir = getTranslationDir(dataDir, translation);
+  if (!existsSync(translationDir)) {
+    const missing: TranslationHealth = {
+      installed: false,
+      healthy: false,
+      stats: null,
+      translation,
+      warningCount: 0,
+      warnings: [],
+    };
+    translationHealthCache.set(cacheKey, missing);
+    return missing;
+  }
+
+  const bible = readBible(translation, dataDir);
+  if (!bible) {
+    const unreadable: TranslationHealth = {
+      installed: true,
+      healthy: false,
+      stats: null,
+      translation,
+      warningCount: 1,
+      warnings: ["Bible files were present but could not be loaded."],
+    };
+    translationHealthCache.set(cacheKey, unreadable);
+    return unreadable;
+  }
+
+  const validation = validateBible(bible);
+  const health: TranslationHealth = {
+    installed: true,
+    healthy: validation.valid,
+    stats: validation.stats,
+    translation,
+    warningCount: validation.warnings.length,
+    warnings: validation.warnings,
+  };
+
+  translationHealthCache.set(cacheKey, health);
+  return health;
+}
+
+export function loadBible(
+  translation: Translation,
+  options: LoaderOptions = {}
+): Bible | null {
+  const dataDir = resolveDataDir(options.dataDir);
+  const translationDir = getTranslationDir(dataDir, translation);
+  const bible = readBible(translation, dataDir);
+
+  if (!bible) {
+    const reason = existsSync(translationDir)
+      ? `Translation data could not be loaded: ${translationDir}`
+      : `Translation directory not found: ${translationDir}`;
+    console.error(reason);
     return null;
   }
 
-  // Validate data integrity
-  const validation = validateBible({ translation, books });
-  if (!validation.valid) {
-    console.warn(`Bible validation warnings for ${translation}:`, validation.warnings);
+  const health = inspectTranslation(translation, {
+    dataDir,
+    allowInvalid: true,
+  });
+
+  if (!health.healthy && !options.allowInvalid) {
+    console.error(
+      `${translation} data is unhealthy: ${health.warningCount} warnings (${health.stats?.totalBooks ?? 0} books, ${health.stats?.totalChapters ?? 0} chapters, ${health.stats?.totalVerses ?? 0} verses).`
+    );
+    return null;
   }
 
-  return {
-    translation,
-    books,
-  };
+  return bible;
 }
 
-/**
- * Get list of available translations
- */
-export function getAvailableTranslations(): Translation[] {
-  const dataDir = getDataDir();
-  const translations: Translation[] = [];
-
+export function getInstalledTranslations(options: LoaderOptions = {}): Translation[] {
+  const dataDir = resolveDataDir(options.dataDir);
   if (!existsSync(dataDir)) {
-    return translations;
+    return [];
   }
 
   try {
-    const entries = readdirSync(dataDir);
+    const installed = readdirSync(dataDir)
+      .filter((entry) => entry.startsWith("en-"))
+      .map((entry) => entry.replace("en-", "").toUpperCase())
+      .filter((entry): entry is Translation => isValidTranslation(entry));
 
-    for (const entry of entries) {
-      if (entry.startsWith("en-")) {
-        const translationCode = entry.replace("en-", "").toUpperCase();
-        if (isValidTranslation(translationCode)) {
-          translations.push(translationCode as Translation);
-        }
-      }
-    }
+    return KNOWN_TRANSLATIONS.filter((translation) => installed.includes(translation));
   } catch (error) {
     console.error("Error reading data directory:", error);
+    return [];
   }
-
-  return translations;
 }
 
-/**
- * Type guard for Translation
- */
-function isValidTranslation(code: string): boolean {
-  return ["ASV", "KJV", "WEB", "YLT"].includes(code);
+export function getAvailableTranslations(options: LoaderOptions = {}): Translation[] {
+  return getInstalledTranslations(options).filter((translation) =>
+    inspectTranslation(translation, { dataDir: options.dataDir, allowInvalid: true }).healthy
+  );
+}
+
+function isValidTranslation(code: string): code is Translation {
+  return KNOWN_TRANSLATIONS.includes(code as Translation);
 }
 
 /**
