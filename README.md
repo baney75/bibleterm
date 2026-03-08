@@ -40,6 +40,14 @@ Update installed users with:
 bterm upgrade
 ```
 
+If you installed an early pre-`1.0.2` build, do one manual reinstall first:
+
+```bash
+bun install -g bibleterm
+```
+
+After that, `bterm upgrade` is the supported update path.
+
 ## Install for Development
 
 ```bash
