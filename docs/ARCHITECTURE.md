@@ -30,6 +30,12 @@
 - Bootstraps the updateable local install tree on first run or when the packaged version changes.
 - Hands execution off to the installed app so `bterm upgrade` and normal launches stay on the same code/data path.
 
+## `scripts/install-release.sh`
+
+- Release-based bootstrap installer for users who are not installing from a published npm package.
+- Downloads the latest GitHub Release tarball, extracts it, and runs `scripts/install.ts`.
+- Keeps first-time install and later `bterm upgrade` on the same installed layout.
+
 ## `src/install-layout.ts`
 
 - Resolves the installed app/data/bin locations.
@@ -107,6 +113,8 @@ Launcher executes Bun directly on installed `src/main.ts`, exporting:
 `bterm upgrade` uses the same install layout and replacement code as first-time install.
 
 Published Bun package installs (`bun install -g bibleterm`) also converge into this same layout through `src/entry.ts`.
+
+The GitHub Pages site points users at `scripts/install-release.sh` until npm publish is live.
 
 ## Testing and Verification
 

@@ -16,20 +16,24 @@ Fast offline Bible reader for the terminal (Ghostty, iTerm2, macOS Terminal, Lin
 - Bun 1.0+ on your PATH
 - Interactive terminal (TTY)
 
+## Website
+
+- https://baney75.github.io/bibleterm/
+
 ## Quick Start
 
 ```bash
-bun install -g bibleterm
+curl -fsSL https://raw.githubusercontent.com/baney75/bibleterm/main/scripts/install-release.sh | bash
 bterm --doctor
 bterm
 ```
 
-This installs a global `bterm` command. On first launch, the packaged entrypoint bootstraps the updateable local app/data tree under `~/.local/share/bibleterm`, then runs that installed copy.
+This installs a global `bterm` launcher backed by the latest published GitHub Release under `~/.local/share/bibleterm`. After that, users stay current with `bterm upgrade`.
 
 ## Install for Users
 
 ```bash
-bun install -g bibleterm
+curl -fsSL https://raw.githubusercontent.com/baney75/bibleterm/main/scripts/install-release.sh | bash
 bterm --doctor
 bterm
 ```
@@ -40,13 +44,17 @@ Update installed users with:
 bterm upgrade
 ```
 
-If you installed an early pre-`1.0.2` build, do one manual reinstall first:
+After that, `bterm upgrade` is the supported update path.
+
+## Global Bun Package
+
+The package metadata is prepared for:
 
 ```bash
 bun install -g bibleterm
 ```
 
-After that, `bterm upgrade` is the supported update path.
+Actual publish from this machine is still blocked until npm authentication is configured. Until then, the release installer above is the supported user path.
 
 ## Install for Development
 
@@ -79,14 +87,6 @@ bterm --doctor
 
 `--doctor` validates every installed translation and exits nonzero if any installed corpus is unhealthy.
 `upgrade` pulls the latest published GitHub Release and replaces the installed app/data tree.
-
-Global Bun installs should use:
-
-```bash
-bun install -g bibleterm
-```
-
-That global command bootstraps the user-local install tree automatically so `bterm upgrade` keeps working afterward.
 
 Bundled English imports currently come from `bibleapi/bibleapi-bibles-json` as an interim source. The importer is replaceable, and maintainers should verify licensing before changing redistribution assumptions.
 
@@ -159,3 +159,4 @@ Installed-user recovery should prefer:
 - Architecture map: `docs/ARCHITECTURE.md`
 - Release checklist: `docs/RELEASE_CHECKLIST.md`
 - Changelog: `CHANGELOG.md`
+- Website: `https://baney75.github.io/bibleterm/`

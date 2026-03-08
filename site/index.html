@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bterm | Bible reading built for the terminal</title>
+    <meta
+      name="description"
+      content="Offline Bible reading for the terminal with healthy ASV/KJV data, red-letter text, fast search, and a simple install and upgrade path."
+    />
+    <meta property="og:title" content="bterm | Bible reading built for the terminal" />
+    <meta
+      property="og:description"
+      content="Install from the latest GitHub Release, run bterm, and stay current with bterm upgrade."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://baney75.github.io/bibleterm/" />
+    <meta property="og:image" content="./assets/branding/bterm-logo-preview-dark.png" />
+    <meta name="theme-color" content="#07101d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-lockup" href="#top" aria-label="bterm home">
+          <img src="./assets/branding/bterm-logo-square.png" alt="bterm logo mark" />
+          <span class="brand-text">
+            <strong>bterm</strong>
+            <span>terminal bible reader</span>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#install">Install</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="header-link" href="https://github.com/baney75/bibleterm">GitHub</a>
+      </header>
+
+      <main id="top">
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Offline Scripture, terminal-native</p>
+            <h1>Bible reading built for the terminal, with an install path people can actually use.</h1>
+            <p class="lede">
+              <code>bterm</code> gives you healthy ASV/KJV data, red-letter reading, fast local
+              search, range copy, themes, and a release-backed update path that stays simple after
+              first install.
+            </p>
+            <div class="signal-row" aria-label="Highlights">
+              <span>ASV + KJV</span>
+              <span>offline reading</span>
+              <span>local search</span>
+              <span>bterm upgrade</span>
+            </div>
+            <div class="cta-row">
+              <a class="button button-primary" href="#install">Install now</a>
+              <a class="button button-secondary" href="https://github.com/baney75/bibleterm/releases/latest"
+                >Latest Release</a
+              >
+            </div>
+            <div class="install-bar">
+              <span>Install from the latest release</span>
+              <code>curl -fsSL .../install-release.sh | bash</code>
+            </div>
+          </div>
+
+          <div class="hero-stage">
+            <div class="stage-panel">
+              <div class="stage-meta">
+                <div>
+                  <span class="stage-kicker">Real user path</span>
+                  <p>Install once from GitHub Releases, then keep using <code>bterm upgrade</code>.</p>
+                </div>
+                <img class="stage-mark" src="./assets/branding/bterm-logo-square.png" alt="bterm logo mark" />
+              </div>
+              <div class="terminal-card">
+                <div class="terminal-chrome">
+                  <span></span><span></span><span></span>
+                </div>
+                <pre class="terminal-copy"><code>$ curl -fsSL \
+  https://raw.githubusercontent.com/baney75/bibleterm/main/scripts/install-release.sh | bash
+$ bterm --doctor
+bterm 1.0.2
+installed: ASV, KJV
+healthy: ASV, KJV
+status: ok
+
+$ bterm
+
+Genesis 1      ASV      [t] translation  [c] theme  [/] search
+[Genesis 1:1] [ASV]  JHN 1:1  HEB 11:3  PSA 33:6
+---------------------------------------------------------------
+BOOKS                           Genesis 1                  1 / 31
+> Genesis                       1  In the beginning God created...</code></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="proof-grid" id="features">
+          <article class="proof-card proof-card-featured">
+            <p class="eyebrow">Why it holds up</p>
+            <h2>Serious CLI behavior, not terminal cosplay.</h2>
+            <p>
+              The app only presents healthy translations, keeps data local, routes updates through
+              releases, and gives normal users three commands that matter: <code>bterm</code>,
+              <code>bterm --doctor</code>, and <code>bterm upgrade</code>.
+            </p>
+          </article>
+          <article class="proof-card">
+            <strong>Healthy translation surface</strong>
+            <p>Broken corpora stay out of the picker and out of the lie.</p>
+          </article>
+          <article class="proof-card">
+            <strong>Made for daily reading</strong>
+            <p>Fast navigation, reference jump, range copy, search, and red-letter reading.</p>
+          </article>
+        </section>
+
+        <section class="workflow" id="workflow">
+          <div class="section-heading">
+            <p class="eyebrow">Workflow</p>
+            <h2>One path in, one path forward.</h2>
+            <p>
+              First-time install and later upgrades land in the same local layout, so the product
+              stays coherent instead of drifting between “package mode” and “manual fix mode.”
+            </p>
+            <div class="wordmark-panel">
+              <p>Terminal wordmark</p>
+              <pre> |_ _|_  _  ._ ._ _
+ |_) |_ (/_ |  | | |</pre>
+            </div>
+          </div>
+
+          <div class="timeline">
+            <article class="timeline-card">
+              <span class="timeline-step">01</span>
+              <h3>Bootstrap from a release</h3>
+              <p>
+                The release installer downloads the latest GitHub release and runs the normal local
+                install flow.
+              </p>
+            </article>
+            <article class="timeline-card">
+              <span class="timeline-step">02</span>
+              <h3>Run the same command every day</h3>
+              <p>
+                Users open the reader with <code>bterm</code>. They do not need the repo checkout
+                or a second launcher story.
+              </p>
+            </article>
+            <article class="timeline-card">
+              <span class="timeline-step">03</span>
+              <h3>Upgrade without guesswork</h3>
+              <p>
+                <code>bterm upgrade</code> fetches the latest GitHub release and revalidates the
+                installed data before calling it done.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="command-deck" aria-labelledby="command-deck-title">
+          <div class="section-heading compact">
+            <p class="eyebrow">Daily commands</p>
+            <h2 id="command-deck-title">Small surface, clear muscle memory.</h2>
+          </div>
+          <div class="command-grid">
+            <article class="command-card">
+              <span class="command-label">Open the reader</span>
+              <code>bterm</code>
+            </article>
+            <article class="command-card">
+              <span class="command-label">Check installed health</span>
+              <code>bterm --doctor</code>
+            </article>
+            <article class="command-card">
+              <span class="command-label">Update later</span>
+              <code>bterm upgrade</code>
+            </article>
+          </div>
+        </section>
+
+        <section class="install-section" id="install">
+          <div class="section-heading compact">
+            <p class="eyebrow">Install</p>
+            <h2>The path that works today.</h2>
+            <p>
+              Use the release installer now. The package metadata is already prepared for
+              <code>bun install -g bibleterm</code>, but actual npm publish still depends on npm
+              auth on the maintainer side.
+            </p>
+          </div>
+          <div class="install-layout">
+            <div class="install-copy">
+              <div class="checklist-item">
+                <strong>Works without a repo checkout</strong>
+                <span>Users install from a published release, not a development branch.</span>
+              </div>
+              <div class="checklist-item">
+                <strong>Keeps updates simple</strong>
+                <span>After install, future releases are just <code>bterm upgrade</code>.</span>
+              </div>
+              <div class="checklist-item">
+                <strong>Stays honest under failure</strong>
+                <span><code>bterm --doctor</code> shows exactly what is healthy and installed.</span>
+              </div>
+            </div>
+            <div class="install-card">
+              <pre class="install-code"><code>curl -fsSL \
+  https://raw.githubusercontent.com/baney75/bibleterm/main/scripts/install-release.sh | bash
+bterm --doctor
+bterm
+
+# later
+bterm upgrade</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="faq-grid" id="faq">
+          <article class="faq-item">
+            <h3>Does this work offline?</h3>
+            <p>
+              Yes. Reading, navigation, search, and copy work from local ASV/KJV data. Network use
+              is only for install and upgrade.
+            </p>
+          </article>
+          <article class="faq-item">
+            <h3>What if an installed translation is broken?</h3>
+            <p>
+              The app filters unhealthy translations out of the picker. You can verify the current
+              install with <code>bterm --doctor</code>.
+            </p>
+          </article>
+          <article class="faq-item">
+            <h3>Where are the docs?</h3>
+            <p>
+              The project lives on
+              <a href="https://github.com/baney75/bibleterm">GitHub</a>. Release notes, architecture,
+              and contributor docs are all there.
+            </p>
+          </article>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>bterm is open source and designed to stay small, honest, and useful.</p>
+        <a href="https://github.com/baney75/bibleterm">github.com/baney75/bibleterm</a>
+      </footer>
+    </div>
+  </body>
+</html>
