@@ -1,15 +1,52 @@
 {
   "name": "bibleterm",
-  "version": "1.0.0",
-  "description": "Terminal Bible reader with red-letter text",
+  "version": "1.0.1",
+  "description": "Offline terminal Bible reader with red-letter text and bundled ASV/KJV data",
   "packageManager": "bun@1.3.8",
   "repository": {
     "type": "git",
     "url": "https://github.com/baney75/bibleterm.git"
   },
+  "homepage": "https://github.com/baney75/bibleterm",
+  "bugs": {
+    "url": "https://github.com/baney75/bibleterm/issues"
+  },
+  "keywords": [
+    "bible",
+    "terminal",
+    "cli",
+    "reader",
+    "bun"
+  ],
   "module": "src/main.ts",
+  "bin": {
+    "bterm": "./src/entry.ts"
+  },
+  "files": [
+    "src/entry.ts",
+    "src/main.ts",
+    "src/meta.ts",
+    "src/state.ts",
+    "src/search.ts",
+    "src/reference.ts",
+    "src/passage.ts",
+    "src/install-layout.ts",
+    "src/upgrade.ts",
+    "src/concurrency.ts",
+    "src/data/canon.ts",
+    "src/data/loader.ts",
+    "src/data/red-letter.json",
+    "src/data/redletter.ts",
+    "src/data/sanitize.ts",
+    "src/ui/ascii.ts",
+    "src/ui/theme.ts",
+    "data",
+    "README.md"
+  ],
   "type": "module",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "bun": ">=1.0.0"
   },
@@ -29,7 +66,8 @@
     "ascii:generate": "bun scripts/generate-ascii.ts",
     "build": "bun build src/main.ts --compile --outfile bterm",
     "install": "bun run scripts/install.ts",
-    "install:global": "bun run build && sudo mv bterm /usr/local/bin/bterm"
+    "install:global": "bun run build && sudo mv bterm /usr/local/bin/bterm",
+    "publish:dry-run": "bun publish --dry-run --access public"
   },
   "dependencies": {},
   "devDependencies": {

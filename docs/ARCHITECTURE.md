@@ -24,6 +24,12 @@
 - Runtime source of truth for version and repository metadata.
 - Keeps CLI/version/help output aligned with release metadata.
 
+## `src/entry.ts`
+
+- Published package entrypoint for `bun install -g bibleterm`.
+- Bootstraps the updateable local install tree on first run or when the packaged version changes.
+- Hands execution off to the installed app so `bterm upgrade` and normal launches stay on the same code/data path.
+
 ## `src/install-layout.ts`
 
 - Resolves the installed app/data/bin locations.
@@ -38,7 +44,7 @@
 
 ## `src/ui/ascii.ts`
 
-- Generated branding asset used by the startup splash, CLI help/upgrade output, and large-reader header.
+- Generated branding asset used by the startup splash and CLI help/upgrade output.
 - Keeps runtime banner rendering deterministic without requiring figlet on user machines.
 
 ## `src/state.ts`
@@ -99,6 +105,8 @@ Launcher executes Bun directly on installed `src/main.ts`, exporting:
 - `BIBLETERM_DATA_DIR`
 
 `bterm upgrade` uses the same install layout and replacement code as first-time install.
+
+Published Bun package installs (`bun install -g bibleterm`) also converge into this same layout through `src/entry.ts`.
 
 ## Testing and Verification
 

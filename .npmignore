@@ -1,0 +1,8 @@
+.github
+docs
+scripts
+bterm
+src/**/*.test.ts
+CHANGELOG.md
+CONTRIBUTING.md
+tsconfig.json

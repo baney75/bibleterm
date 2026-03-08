@@ -1,4 +1,4 @@
-export const VERSION = "1.0.0";
+export const VERSION = "1.0.1";
 export const REPOSITORY_URL = "https://github.com/baney75/bibleterm";
 export const GITHUB_OWNER = "baney75";
 export const GITHUB_REPO = "bibleterm";

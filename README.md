@@ -19,14 +19,28 @@ Fast offline Bible reader for the terminal (Ghostty, iTerm2, macOS Terminal, Lin
 ## Quick Start
 
 ```bash
-bun install
-bun run install
-bterm upgrade
+bun install -g bibleterm
 bterm --doctor
 bterm
 ```
 
-## Install
+This installs a global `bterm` command. On first launch, the packaged entrypoint bootstraps the updateable local app/data tree under `~/.local/share/bibleterm`, then runs that installed copy.
+
+## Install for Users
+
+```bash
+bun install -g bibleterm
+bterm --doctor
+bterm
+```
+
+Update installed users with:
+
+```bash
+bterm upgrade
+```
+
+## Install for Development
 
 ```bash
 bun install
@@ -38,12 +52,6 @@ This installs:
 - Launcher: `~/.local/bin/bterm`
 - App files: `~/.local/share/bibleterm/app`
 - Bible data: `~/.local/share/bibleterm/data`
-
-Update installed users with:
-
-```bash
-bterm upgrade
-```
 
 If `~/.local/bin` is not on your PATH, add it:
 
@@ -64,6 +72,14 @@ bterm --doctor
 `--doctor` validates every installed translation and exits nonzero if any installed corpus is unhealthy.
 `upgrade` pulls the latest published GitHub Release and replaces the installed app/data tree.
 
+Global Bun installs should use:
+
+```bash
+bun install -g bibleterm
+```
+
+That global command bootstraps the user-local install tree automatically so `bterm upgrade` keeps working afterward.
+
 Bundled English imports currently come from `bibleapi/bibleapi-bibles-json` as an interim source. The importer is replaceable, and maintainers should verify licensing before changing redistribution assumptions.
 
 ## Keybinds
@@ -79,6 +95,7 @@ Bundled English imports currently come from `bibleapi/bibleapi-bibles-json` as a
 - `Tab`: toggle sidebar focus
 - `Esc`: clear marked range
 - `t`: translation picker
+- `c`: color theme picker
 - `?`: help modal
 - `q`: quit
 

@@ -2,9 +2,11 @@ import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, ex
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { VERSION } from "./meta";
 import { validateReleaseTree } from "./upgrade";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
+const UPGRADE_TEST_VERSION = VERSION.replace(/\.(\d+)$/, (_, patch) => `.${Number(patch) + 1}`);
 
 let fixtureRoot = "";
 let validArchivePath = "";
@@ -43,7 +45,7 @@ function startReleaseServer(config: {
 
         return new Response(
           JSON.stringify({
-            tag_name: config.tagName || "v1.0.0",
+            tag_name: config.tagName || `v${VERSION}`,
             tarball_url: `${url.origin}/${config.invalid ? "invalid.tgz" : "valid.tgz"}`,
           }),
           {
@@ -145,10 +147,10 @@ beforeAll(() => {
   const invalidRoot = join(fixtureRoot, "invalid", "release");
   mkdirSync(join(invalidRoot, "src"), { recursive: true });
   writeFileSync(join(invalidRoot, "src", "main.ts"), 'console.log("broken");\n');
-  writeFileSync(
-    join(invalidRoot, "package.json"),
-    JSON.stringify({ name: "bibleterm", version: "1.0.1" }, null, 2)
-  );
+    writeFileSync(
+      join(invalidRoot, "package.json"),
+      JSON.stringify({ name: "bibleterm", version: UPGRADE_TEST_VERSION }, null, 2)
+    );
   invalidArchivePath = join(fixtureRoot, "invalid-release.tgz");
   createTarball(join(fixtureRoot, "invalid"), invalidArchivePath);
 });
@@ -230,7 +232,7 @@ describe("upgrade flow", () => {
     installToRoot(installRoot);
     const beforePackage = readFileSync(join(installRoot, "app", "package.json"), "utf8");
     const server = startReleaseServer({
-      tagName: "v1.0.1",
+      tagName: `v${UPGRADE_TEST_VERSION}`,
       tarballStatus: 500,
     });
 
@@ -253,7 +255,7 @@ describe("upgrade flow", () => {
     const installRoot = mkdtempSync(join(tmpdir(), "bterm-upgrade-invalid-"));
     installToRoot(installRoot);
     const beforePackage = readFileSync(join(installRoot, "app", "package.json"), "utf8");
-    const server = startReleaseServer({ invalid: true, tagName: "v1.0.1" });
+    const server = startReleaseServer({ invalid: true, tagName: `v${UPGRADE_TEST_VERSION}` });
 
     try {
       const proc = await runUpgradeProcess({

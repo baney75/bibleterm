@@ -8,6 +8,7 @@
 - [ ] Regenerate branding if needed: `bun run ascii:generate`
 - [ ] Run `bun run verify`
 - [ ] Run `bun run install` and verify `bterm --doctor`
+- [ ] Run `bun publish --dry-run --access public`
 - [ ] Confirm docs reflect any behavior changes
 
 ## Git and Tag
@@ -22,4 +23,6 @@
 - [ ] Create GitHub release notes from changelog
 - [ ] Verify latest CI run is green on `main`
 - [ ] Smoke-test install from clean shell profile
+- [ ] Smoke-test global package install: `bun install -g bibleterm`
 - [ ] Verify `bterm upgrade` from a previously installed version
+- [ ] Publish npm package with `bun publish --access public`

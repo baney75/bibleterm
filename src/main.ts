@@ -25,7 +25,7 @@ import {
 } from "./search";
 import { isRedLetter } from "./data/redletter";
 import { parseReferenceInput, type ParsedReference } from "./reference";
-import { renderHeaderBanner, renderSplashBanner, shouldShowSplash } from "./ui/ascii";
+import { FALLBACK_WORDMARK, renderSplashBanner, shouldShowSplash } from "./ui/ascii";
 import { getTheme, getThemeOptions } from "./ui/theme";
 import { runUpgrade } from "./upgrade";
 
@@ -752,67 +752,35 @@ class BibleTerm {
     translation: string
   ): HeaderRender {
     const theme = this.getTheme();
-    const banner = renderHeaderBanner(this.termWidth, this.termHeight);
     const separator = `${DIM}${"-".repeat(this.termWidth)}${RESET}`;
     const bookName = book?.name ?? "-";
     const chapterLabel = chapter ? `${chapter.chapter}` : "-";
-    const metaLeft = `${theme.accentBright}${bookName} ${chapterLabel}${RESET}`;
-    const metaRight = `${theme.accentBright}${translation}${RESET}${DIM}  [t] translation  [c] theme${RESET}`;
-    if (!banner.includes("\n")) {
-      const left = `${BOLD}${theme.textBright} ${banner} ${RESET}`;
-      const spaces = Math.max(
-        1,
-        this.termWidth - this.visibleLength(left) - this.visibleLength(metaRight) - this.visibleLength(metaLeft)
-      );
+    const brand = `${theme.bgSubtle}${theme.textBright}${BOLD} ${FALLBACK_WORDMARK} ${RESET}`;
+    const location = `${theme.accentBright}${BOLD}${bookName} ${chapterLabel}${RESET}`;
+    const controls = `${theme.warm}[t]${RESET}${DIM} translation${RESET}  ${theme.warm}[c]${RESET}${DIM} theme${RESET}`;
+    const left = `${brand} ${location}`;
+    const spaces = Math.max(
+      2,
+      this.termWidth - this.visibleLength(left) - this.visibleLength(controls)
+    );
+    const topLine = `${left}${" ".repeat(spaces)}${controls}`;
 
-      return {
-        lineCount: 2,
-        text: `${left}${metaLeft}${" ".repeat(spaces)}${metaRight}\n${separator}\n`,
-      };
-    }
-
-    const bannerLines = banner
-      .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .map((line) => `${BOLD}${theme.textBright}${line}${RESET}`);
-
-    const leftLines = [...bannerLines, metaLeft];
-    const leftWidth = Math.max(...leftLines.map((line) => this.visibleLength(line)));
-    const panelGap = 3;
-    const panelWidth = this.termWidth - leftWidth - panelGap;
-
-    if (panelWidth < 34) {
-      return {
-        lineCount: leftLines.length + 1,
-        text: `${leftLines.join("\n")}\n${separator}\n`,
-      };
-    }
-
-    const contextLines = this.buildHeaderContextLines(book, chapter, translation, panelWidth);
-    const totalLines = Math.max(leftLines.length, contextLines.length);
-    const merged: string[] = [];
-
-    for (let i = 0; i < totalLines; i++) {
-      const left = this.padAnsi(leftLines[i] ?? "", leftWidth);
-      const right = contextLines[i] ?? "";
-      merged.push(`${left}${" ".repeat(panelGap)}${right}`);
-    }
-
+    const contextLine = this.buildHeaderContextLine(book, chapter, translation, this.termWidth);
     return {
-      lineCount: totalLines + 1,
-      text: `${merged.join("\n")}\n${separator}\n`,
+      lineCount: 3,
+      text: `${topLine}\n${contextLine}\n${separator}\n`,
     };
   }
 
-  private buildHeaderContextLines(
+  private buildHeaderContextLine(
     book: Book | null,
     chapter: Chapter | null,
     translation: string,
     width: number
-  ): string[] {
+  ): string {
     const theme = this.getTheme();
     const verse = chapter?.verses[this.selectedVerseIndex];
-    const relatedLimit = width >= 52 ? 3 : 2;
+    const relatedLimit = width >= 110 ? 4 : width >= 84 ? 3 : 2;
     const related = book && chapter && verse
       ? findRelatedVerses(
           verse.text,
@@ -824,19 +792,20 @@ class BibleTerm {
           relatedLimit
         ).map((result) => this.formatHeaderReference(result))
       : [];
-    const translationLine = this.padAnsiLeft(
-      `${theme.accentBright}${translation}${RESET}${DIM}  [t] translation  [c] theme${RESET}`,
-      width
-    );
     const selectedRef = book && chapter && verse
-      ? `${theme.textBright}${book.name} ${chapter.chapter}:${verse.verse}${RESET}${DIM} selected${RESET}`
-      : `${DIM}No verse selected${RESET}`;
-
-    return [
-      this.buildHeaderTokenLine("CROSSREFS", related, width, theme.accentBright, "No strong links"),
-      this.padAnsiLeft(selectedRef, width),
-      translationLine,
-    ];
+      ? `${theme.bgSubtle}${theme.textBright} ${book.name} ${chapter.chapter}:${verse.verse} ${RESET}`
+      : `${theme.bgSubtle}${DIM} No verse selected ${RESET}`;
+    const translationChip = `${theme.bgSubtle}${theme.accentBright} ${translation} ${RESET}`;
+    const prefix = `${selectedRef} ${translationChip} `;
+    const available = Math.max(10, width - this.visibleLength(prefix));
+    const refs = this.buildHeaderTokenLine(
+      "CROSSREFS",
+      related,
+      available,
+      theme.accentBright,
+      "No strong links"
+    );
+    return `${prefix}${refs}`;
   }
 
   private buildHeaderTokenLine(
@@ -905,7 +874,10 @@ class BibleTerm {
 
     const lines: string[] = [];
     const focused = state.focus === "sidebar" ? `${theme.bgSubtle}${theme.textBright}` : "";
-    lines.push(`${focused}${BOLD} BOOKS ${RESET}`);
+    const totalBooks = this.bible.books.length;
+    lines.push(
+      `${focused}${BOLD}${theme.textBright} BOOKS ${RESET}${DIM} ${totalBooks} total${RESET}`
+    );
 
     const chapterCount = currentBook?.chapters.length ?? 0;
     lines.push(
@@ -924,9 +896,11 @@ class BibleTerm {
       const marker = selected ? ">" : " ";
       const name = this.truncate(book.name, width - 6);
       if (selected) {
-        lines.push(`${theme.bgSubtle}${theme.accent}${BOLD}>${theme.textBright} ${name}${RESET}`);
+        const raw = `> ${name}`;
+        const pad = " ".repeat(Math.max(0, width - raw.length));
+        lines.push(`${theme.bgSubtle}${theme.accent}${BOLD}> ${theme.textBright}${name}${pad}${RESET}`);
       } else {
-        lines.push(`${marker} ${name}`);
+        lines.push(`${DIM}${marker}${RESET} ${theme.text}${name}${RESET}`);
       }
     }
 
@@ -946,8 +920,13 @@ class BibleTerm {
     const lines: string[] = [];
     const selectedLabel = `${this.selectedVerseIndex + 1}/${chapter.verses.length}`;
     const selectionLabel = this.getSelectionLabel(chapter);
+    const title = `${theme.accentBright}${BOLD}${book.name} ${chapter.chapter}${RESET}`;
+    const verseChip = `${theme.bgSubtle}${theme.textBright} verse ${selectedLabel} ${RESET}`;
+    const selectionChip = selectionLabel
+      ? ` ${theme.bgSubtle}${theme.warm} ${selectionLabel} ${RESET}`
+      : "";
     lines.push(
-      `${BOLD}${theme.accentBright}${book.name} ${chapter.chapter}${RESET}${DIM}  Verse ${selectedLabel}${selectionLabel ? `  ${selectionLabel}` : ""}  Jump PgUp/PgDn${RESET}`
+      `${title}  ${verseChip}${selectionChip}${DIM}  PgUp/PgDn jump 10${RESET}`
     );
 
     const usable = Math.max(1, height - 1);
