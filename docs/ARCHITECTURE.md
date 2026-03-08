@@ -17,6 +17,29 @@
 - Owns app lifecycle, key handling, rendering, and mode switching.
 - Modes: `reading`, `search`, `modal`.
 - Handles terminal cleanup (`alternate screen`, `cursor visibility`, `raw mode reset`).
+- Routes non-interactive CLI subcommands such as `bterm upgrade` before TTY setup.
+
+## `src/meta.ts`
+
+- Runtime source of truth for version and repository metadata.
+- Keeps CLI/version/help output aligned with release metadata.
+
+## `src/install-layout.ts`
+
+- Resolves the installed app/data/bin locations.
+- Replaces installed source/data as one operation so stale corpora cannot survive reinstall or upgrade.
+- Writes the user launcher and its environment contract.
+
+## `src/upgrade.ts`
+
+- Fetches the latest GitHub Release metadata for `baney75/bibleterm`.
+- Downloads and validates the release tarball before replacing the install tree.
+- Revalidates bundled Bible data after install so `bterm upgrade` cannot leave a broken install behind.
+
+## `src/ui/ascii.ts`
+
+- Generated branding asset used by the startup splash, CLI help/upgrade output, and large-reader header.
+- Keeps runtime banner rendering deterministic without requiring figlet on user machines.
 
 ## `src/state.ts`
 
@@ -65,10 +88,17 @@
 Installed by `scripts/install.ts`:
 
 - launcher: `~/.local/bin/bterm`
-- app: `~/.local/share/bibleterm/app/src`
+- app: `~/.local/share/bibleterm/app`
 - data: `~/.local/share/bibleterm/data`
 
-Launcher executes Bun directly on installed `src/main.ts`.
+Launcher executes Bun directly on installed `src/main.ts`, exporting:
+
+- `BTERM_INSTALL_ROOT`
+- `BTERM_APP_ROOT`
+- `BTERM_INSTALL_MODE`
+- `BIBLETERM_DATA_DIR`
+
+`bterm upgrade` uses the same install layout and replacement code as first-time install.
 
 ## Testing and Verification
 
@@ -77,6 +107,7 @@ Launcher executes Bun directly on installed `src/main.ts`.
 - Build gate: Bun compile build
 - Health gate: `bterm --doctor` validates every installed translation and fails if any installed corpus is unhealthy
 - Import gate: `bun run download` must leave bundled `ASV` and `KJV` healthy
+- Upgrade gate: `bterm upgrade` must be validated against a published GitHub Release before advertising a new version
 
 Run all with:
 
@@ -91,4 +122,5 @@ bun run verify
 - Keep shipped/default translation claims aligned with the actual healthy data set.
 - Preserve chapter-file compatibility unless a separate runtime storage migration is explicitly planned.
 - Treat `src/data/red-letter.json` as the runtime source of truth unless the builder workflow is changed in the same patch.
+- Regenerate `src/ui/ascii.ts` with `bun run ascii:generate` when the project banner changes.
 - Prefer small commits touching one subsystem at a time.

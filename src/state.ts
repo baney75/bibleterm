@@ -1,5 +1,7 @@
 /** bibleterm - Global State Management */
 
+import { DEFAULT_THEME, type ThemeName } from "./ui/theme";
+
 export type Translation = "ASV" | "KJV" | "WEB" | "YLT";
 
 export const DEFAULT_SHIPPED_TRANSLATIONS: Translation[] = ["ASV", "KJV"];
@@ -11,6 +13,9 @@ export type Mode = "reading" | "search" | "modal";
 export interface AppState {
   /** Currently selected Bible translation */
   translation: Translation;
+
+  /** Active terminal color theme */
+  theme: ThemeName;
   
   /** Currently focused UI element */
   focus: FocusTarget;
@@ -39,6 +44,7 @@ export interface AppState {
 
 export const initialState: AppState = {
   translation: "ASV",
+  theme: DEFAULT_THEME,
   focus: "reader",
   mode: "reading",
   currentBook: "genesis",

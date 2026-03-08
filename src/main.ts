@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { getState, setState, subscribe, type Translation } from "./state";
+import { VERSION, DEFAULT_UPGRADE_COMMAND } from "./meta";
 import {
   getAvailableTranslations,
   getInstalledTranslations,
@@ -15,11 +16,18 @@ import {
   getVerseSelectionRange,
   isVerseWithinSelection,
 } from "./passage";
-import { buildSearchIndex, getSearchTerms, search, type SearchResult } from "./search";
+import {
+  buildSearchIndex,
+  findRelatedVerses,
+  getSearchTerms,
+  search,
+  type SearchResult,
+} from "./search";
 import { isRedLetter } from "./data/redletter";
 import { parseReferenceInput, type ParsedReference } from "./reference";
-
-const VERSION = "1.0.0";
+import { renderHeaderBanner, renderSplashBanner, shouldShowSplash } from "./ui/ascii";
+import { getTheme, getThemeOptions } from "./ui/theme";
+import { runUpgrade } from "./upgrade";
 
 const ESC = "\x1b";
 const CLEAR = `${ESC}[2J${ESC}[H`;
@@ -28,15 +36,14 @@ const ALT_SCREEN_OFF = `${ESC}[?1049l`;
 const RESET = `${ESC}[0m`;
 const BOLD = `${ESC}[1m`;
 const DIM = `${ESC}[2m`;
-const FG_CYAN = `${ESC}[36m`;
-const FG_YELLOW = `${ESC}[33m`;
-const FG_RED = `${ESC}[31m`;
-const FG_WHITE = `${ESC}[37m`;
-const FG_BRIGHT_RED = `${ESC}[91m`;
 const FG_BRIGHT_WHITE = `${ESC}[97m`;
-const BG_SUBTLE = `${ESC}[48;5;236m`;
 
-type ModalKind = "translation" | "help";
+type ModalKind = "translation" | "theme" | "help";
+
+interface HeaderRender {
+  lineCount: number;
+  text: string;
+}
 
 class BibleTerm {
   private bibleByTranslation = new Map<Translation, Bible>();
@@ -55,6 +62,7 @@ class BibleTerm {
   private searchOffset = 0;
 
   private availableTranslations: Translation[] = ["ASV"];
+  private readonly themeOptions = getThemeOptions();
   private modalKind: ModalKind = "translation";
   private modalIndex = 0;
 
@@ -62,12 +70,12 @@ class BibleTerm {
   private statusUntil = 0;
   private cleanedUp = false;
 
-  init(): void {
+  async init(): Promise<void> {
     this.updateTerminalSize();
 
     this.availableTranslations = getAvailableTranslations();
     if (this.availableTranslations.length === 0) {
-      console.error("No healthy Bible data found. Run: bun run download && bun run install");
+      console.error(getHealthyDataMissingMessage());
       process.exit(1);
     }
 
@@ -75,6 +83,8 @@ class BibleTerm {
       console.error("bterm requires an interactive terminal (TTY).");
       process.exit(1);
     }
+
+    await this.showSplash();
 
     const initialTranslation = this.availableTranslations.includes("ASV")
       ? "ASV"
@@ -128,6 +138,44 @@ class BibleTerm {
     }, 33);
   }
 
+  private async showSplash(): Promise<void> {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) return;
+    if (typeof process.stdin.setRawMode !== "function") return;
+    if (!shouldShowSplash(this.termWidth, this.termHeight, process.env)) return;
+
+    const banner = renderSplashBanner(this.termWidth, this.termHeight);
+    const lines = banner.split("\n");
+    const content = [
+      ...lines,
+      "",
+      `${DIM}v${VERSION}${RESET}`,
+      `${DIM}Press any key to continue${RESET}`,
+    ];
+
+    process.stdout.write(CLEAR + content.join("\n") + "\n");
+
+    await new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        process.stdin.off("data", onData);
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdout.write(CLEAR);
+        resolve();
+      };
+
+      const onData = () => finish();
+      const timer = setTimeout(finish, 900);
+
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.once("data", onData);
+    });
+  }
+
   private updateTerminalSize(): void {
     this.termWidth = process.stdout.columns || 80;
     this.termHeight = process.stdout.rows || 24;
@@ -171,6 +219,10 @@ class BibleTerm {
     if (!this.bible) return null;
     const state = getState();
     return this.bible.books.find((b) => b.slug === state.currentBook) ?? null;
+  }
+
+  private getTheme() {
+    return getTheme(getState().theme);
   }
 
   private getCurrentBookIndex(): number {
@@ -348,6 +400,16 @@ class BibleTerm {
         this.modalIndex = Math.max(0, this.availableTranslations.indexOf(state.translation));
         this.needsRender = true;
         return;
+      case "c":
+      case "C":
+        this.modalKind = "theme";
+        setState({ mode: "modal" });
+        this.modalIndex = Math.max(
+          0,
+          this.themeOptions.findIndex((option) => option.name === state.theme)
+        );
+        this.needsRender = true;
+        return;
       case "?":
       case "h":
       case "H":
@@ -440,12 +502,20 @@ class BibleTerm {
         this.needsRender = true;
         return;
       case "\x1b[B":
-        this.modalIndex = Math.min(this.availableTranslations.length - 1, this.modalIndex + 1);
+        this.modalIndex = Math.min(this.getModalOptionCount() - 1, this.modalIndex + 1);
         this.needsRender = true;
         return;
       case "\r": {
-        const selected = this.availableTranslations[this.modalIndex];
-        this.loadTranslation(selected);
+        if (this.modalKind === "translation") {
+          const selected = this.availableTranslations[this.modalIndex];
+          this.loadTranslation(selected);
+        } else if (this.modalKind === "theme") {
+          const selectedTheme = this.themeOptions[this.modalIndex];
+          if (selectedTheme) {
+            setState({ theme: selectedTheme.name });
+            this.flash(`Theme: ${selectedTheme.label}`);
+          }
+        }
         setState({ mode: "reading" });
         this.needsRender = true;
         return;
@@ -453,6 +523,12 @@ class BibleTerm {
       default:
         return;
     }
+  }
+
+  private getModalOptionCount(): number {
+    if (this.modalKind === "translation") return this.availableTranslations.length;
+    if (this.modalKind === "theme") return this.themeOptions.length;
+    return 1;
   }
 
   private refreshSearch(query: string): void {
@@ -652,12 +728,12 @@ class BibleTerm {
     const state = getState();
     const book = this.getCurrentBook();
     const chapter = this.getCurrentChapter();
-    const chapterLabel = chapter ? `${chapter.chapter}` : "-";
 
     let out = CLEAR;
-    out += this.renderHeader(book?.name ?? "-", chapterLabel, state.translation);
+    const header = this.renderHeader(book, chapter, state.translation);
+    out += header.text;
 
-    const bodyHeight = Math.max(8, this.termHeight - 4);
+    const bodyHeight = Math.max(8, this.termHeight - header.lineCount - 1);
     if (state.mode === "reading") {
       out += this.renderReadingBody(bodyHeight);
     } else if (state.mode === "search") {
@@ -670,14 +746,132 @@ class BibleTerm {
     process.stdout.write(out);
   }
 
-  private renderHeader(bookName: string, chapterLabel: string, translation: string): string {
-    const left = `${BOLD}${FG_WHITE} BIBLETERM ${RESET}`;
-    const center = `${DIM}${bookName} ${chapterLabel}${RESET}`;
-    const right = `${DIM}${translation}  [t] translation${RESET}`;
+  private renderHeader(
+    book: Book | null,
+    chapter: Chapter | null,
+    translation: string
+  ): HeaderRender {
+    const theme = this.getTheme();
+    const banner = renderHeaderBanner(this.termWidth, this.termHeight);
+    const separator = `${DIM}${"-".repeat(this.termWidth)}${RESET}`;
+    const bookName = book?.name ?? "-";
+    const chapterLabel = chapter ? `${chapter.chapter}` : "-";
+    const metaLeft = `${theme.accentBright}${bookName} ${chapterLabel}${RESET}`;
+    const metaRight = `${theme.accentBright}${translation}${RESET}${DIM}  [t] translation  [c] theme${RESET}`;
+    if (!banner.includes("\n")) {
+      const left = `${BOLD}${theme.textBright} ${banner} ${RESET}`;
+      const spaces = Math.max(
+        1,
+        this.termWidth - this.visibleLength(left) - this.visibleLength(metaRight) - this.visibleLength(metaLeft)
+      );
 
-    const line = `${left}${center}`;
-    const spaces = Math.max(1, this.termWidth - this.visibleLength(line) - this.visibleLength(right));
-    return `${line}${" ".repeat(spaces)}${right}\n${DIM}${"-".repeat(this.termWidth)}${RESET}\n`;
+      return {
+        lineCount: 2,
+        text: `${left}${metaLeft}${" ".repeat(spaces)}${metaRight}\n${separator}\n`,
+      };
+    }
+
+    const bannerLines = banner
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => `${BOLD}${theme.textBright}${line}${RESET}`);
+
+    const leftLines = [...bannerLines, metaLeft];
+    const leftWidth = Math.max(...leftLines.map((line) => this.visibleLength(line)));
+    const panelGap = 3;
+    const panelWidth = this.termWidth - leftWidth - panelGap;
+
+    if (panelWidth < 34) {
+      return {
+        lineCount: leftLines.length + 1,
+        text: `${leftLines.join("\n")}\n${separator}\n`,
+      };
+    }
+
+    const contextLines = this.buildHeaderContextLines(book, chapter, translation, panelWidth);
+    const totalLines = Math.max(leftLines.length, contextLines.length);
+    const merged: string[] = [];
+
+    for (let i = 0; i < totalLines; i++) {
+      const left = this.padAnsi(leftLines[i] ?? "", leftWidth);
+      const right = contextLines[i] ?? "";
+      merged.push(`${left}${" ".repeat(panelGap)}${right}`);
+    }
+
+    return {
+      lineCount: totalLines + 1,
+      text: `${merged.join("\n")}\n${separator}\n`,
+    };
+  }
+
+  private buildHeaderContextLines(
+    book: Book | null,
+    chapter: Chapter | null,
+    translation: string,
+    width: number
+  ): string[] {
+    const theme = this.getTheme();
+    const verse = chapter?.verses[this.selectedVerseIndex];
+    const relatedLimit = width >= 52 ? 3 : 2;
+    const related = book && chapter && verse
+      ? findRelatedVerses(
+          verse.text,
+          {
+            bookSlug: book.slug,
+            chapter: chapter.chapter,
+            verse: verse.verse,
+          },
+          relatedLimit
+        ).map((result) => this.formatHeaderReference(result))
+      : [];
+    const translationLine = this.padAnsiLeft(
+      `${theme.accentBright}${translation}${RESET}${DIM}  [t] translation  [c] theme${RESET}`,
+      width
+    );
+    const selectedRef = book && chapter && verse
+      ? `${theme.textBright}${book.name} ${chapter.chapter}:${verse.verse}${RESET}${DIM} selected${RESET}`
+      : `${DIM}No verse selected${RESET}`;
+
+    return [
+      this.buildHeaderTokenLine("CROSSREFS", related, width, theme.accentBright, "No strong links"),
+      this.padAnsiLeft(selectedRef, width),
+      translationLine,
+    ];
+  }
+
+  private buildHeaderTokenLine(
+    label: string,
+    tokens: string[],
+    width: number,
+    tokenColor: string,
+    emptyState: string
+  ): string {
+    const theme = this.getTheme();
+    const labelText = `${label} `;
+    const maxContentWidth = Math.max(0, width - labelText.length);
+    const chosen: string[] = [];
+    let used = 0;
+
+    for (const token of tokens) {
+      const nextWidth = used + (chosen.length > 0 ? 2 : 0) + token.length;
+      if (nextWidth > maxContentWidth) break;
+      chosen.push(token);
+      used = nextWidth;
+    }
+
+    const body = chosen.length > 0
+      ? chosen
+          .map((token) => `${tokenColor}${token}${RESET}`)
+          .join(`${DIM}  ${RESET}`)
+      : `${DIM}${this.truncate(emptyState, maxContentWidth)}${RESET}`;
+
+    return `${theme.warm}${BOLD}${label}${RESET} ${body}`;
+  }
+
+  private formatHeaderReference(result: SearchResult): string {
+    const abbreviation = this.bible?.books.find((entry) => entry.slug === result.bookSlug)?.abbreviation;
+    const label = (abbreviation ?? result.book.slice(0, 3)).toUpperCase();
+    return `${label} ${result.chapter}:${result.verse}`;
   }
 
   private renderReadingBody(bodyHeight: number): string {
@@ -686,8 +880,8 @@ class BibleTerm {
       return `${compact.join("\n")}\n`;
     }
 
-    const sidebarWidth = Math.max(23, Math.min(32, Math.floor(this.termWidth * 0.3)));
-    const readerWidth = Math.max(28, this.termWidth - sidebarWidth - 3);
+    const sidebarWidth = Math.max(23, Math.min(30, Math.floor(this.termWidth * 0.28)));
+    const readerWidth = Math.max(28, this.termWidth - sidebarWidth - 2);
 
     const sidebarLines = this.buildSidebarLines(bodyHeight, sidebarWidth);
     const readerLines = this.buildReaderLines(bodyHeight, readerWidth);
@@ -695,7 +889,7 @@ class BibleTerm {
     const lines: string[] = [];
     for (let i = 0; i < bodyHeight; i++) {
       const left = this.padAnsi(sidebarLines[i] ?? "", sidebarWidth);
-      lines.push(`${left}${DIM}|${RESET} ${readerLines[i] ?? ""}`);
+      lines.push(`${left}  ${readerLines[i] ?? ""}`);
     }
 
     return `${lines.join("\n")}\n`;
@@ -704,16 +898,19 @@ class BibleTerm {
   private buildSidebarLines(height: number, width: number): string[] {
     if (!this.bible) return [];
 
+    const theme = this.getTheme();
     const state = getState();
     const currentBook = this.getCurrentBook();
     const currentBookIndex = this.getCurrentBookIndex();
 
     const lines: string[] = [];
-    const focused = state.focus === "sidebar" ? `${BG_SUBTLE}${FG_BRIGHT_WHITE}` : "";
+    const focused = state.focus === "sidebar" ? `${theme.bgSubtle}${theme.textBright}` : "";
     lines.push(`${focused}${BOLD} BOOKS ${RESET}`);
 
     const chapterCount = currentBook?.chapters.length ?? 0;
-    lines.push(`${DIM} Ch ${state.currentChapter}/${chapterCount}${RESET}`);
+    lines.push(
+      `${theme.accentBright}${this.truncate(currentBook?.name ?? "-", width - 10)}${RESET}${DIM}  ${state.currentChapter}/${chapterCount}${RESET}`
+    );
     lines.push("");
 
     const maxBooks = Math.max(1, height - 6);
@@ -724,13 +921,17 @@ class BibleTerm {
     for (let i = start; i < end; i++) {
       const book = this.bible.books[i];
       const selected = i === currentBookIndex;
-      const marker = selected ? `${FG_CYAN}>${RESET}` : " ";
-      const name = this.truncate(book.name, width - 4);
-      lines.push(`${marker} ${selected ? BOLD : ""}${name}${RESET}`);
+      const marker = selected ? ">" : " ";
+      const name = this.truncate(book.name, width - 6);
+      if (selected) {
+        lines.push(`${theme.bgSubtle}${theme.accent}${BOLD}>${theme.textBright} ${name}${RESET}`);
+      } else {
+        lines.push(`${marker} ${name}`);
+      }
     }
 
     lines.push("");
-    lines.push(`${DIM} [Tab] toggle focus${RESET}`);
+    lines.push(`${DIM}[Tab] toggle focus${RESET}`);
 
     while (lines.length < height) lines.push("");
     return lines.slice(0, height);
@@ -741,16 +942,16 @@ class BibleTerm {
     const book = this.getCurrentBook();
     if (!chapter || !book) return ["No chapter loaded"];
 
+    const theme = this.getTheme();
     const lines: string[] = [];
-    lines.push(`${BOLD}${FG_WHITE}${book.name} ${chapter.chapter}${RESET}`);
     const selectedLabel = `${this.selectedVerseIndex + 1}/${chapter.verses.length}`;
     const selectionLabel = this.getSelectionLabel(chapter);
     lines.push(
-      `${DIM}Verse ${selectedLabel}${selectionLabel ? `  ${selectionLabel}` : ""}  PgUp/PgDn jump 10${RESET}`
+      `${BOLD}${theme.accentBright}${book.name} ${chapter.chapter}${RESET}${DIM}  Verse ${selectedLabel}${selectionLabel ? `  ${selectionLabel}` : ""}  Jump PgUp/PgDn${RESET}`
     );
 
-    const usable = Math.max(1, height - 2);
-    const contentWidth = Math.max(8, Math.min(width - 8, 512)); // Cap max width to prevent overflow
+    const usable = Math.max(1, height - 1);
+    const contentWidth = Math.max(8, Math.min(width - 10, 512));
     this.updateReaderStartVerse(chapter, contentWidth, usable);
     const startVerse = this.readerStartVerse;
 
@@ -767,25 +968,39 @@ class BibleTerm {
       const verseNo = `${String(verse.verse).padStart(3, " ")}`;
       const wrapped = this.wrapText(verse.text, contentWidth);
 
-      const prefix = selected ? `${FG_CYAN}${BOLD}>${RESET}` : inSelection ? `${FG_CYAN}+${RESET}` : " ";
-      const verseNoStyle = selected ? `${FG_YELLOW}${BOLD}` : inSelection ? FG_CYAN : DIM;
-      const paragraphMarker = verse.paragraphStart ? `${DIM}¶${RESET}` : " ";
-      const textStyle = `${selected ? BOLD : ""}${red ? FG_BRIGHT_RED : FG_BRIGHT_WHITE}`;
+      const prefix = selected
+        ? `${theme.accentBright}${BOLD}>${RESET}`
+        : inSelection
+          ? `${theme.accent}+${RESET}`
+          : " ";
+      const rowBg = selected ? theme.bgActive : "";
+      const verseNoStyle = selected
+        ? `${rowBg}${theme.warm}${BOLD}`
+        : inSelection
+          ? `${theme.accent}${BOLD}`
+          : DIM;
+      const paragraphChar = verse.paragraphStart ? "¶" : " ";
+      const paragraphMarker = selected
+        ? `${rowBg}${DIM}${paragraphChar}${RESET}`
+        : verse.paragraphStart
+          ? `${DIM}${paragraphChar}${RESET}`
+          : " ";
+      const textStyle = `${rowBg}${selected ? BOLD : ""}${red ? theme.redLetter : theme.textBright}`;
 
       if (wrapped.length > 0) {
         lines.push(
-          `${prefix} ${verseNoStyle}${verseNo}${RESET} ${paragraphMarker} ${textStyle}${wrapped[0]}${RESET}`
+          `${prefix}  ${verseNoStyle}${verseNo}${RESET} ${paragraphMarker} ${textStyle}${wrapped[0]}${RESET}`
         );
       }
 
       for (let w = 1; w < wrapped.length; w++) {
         if (lines.length >= height) break;
         const continuationPrefix = selected
-          ? `${FG_CYAN}${BOLD}:${RESET}`
+          ? `${theme.accent}${BOLD}:${RESET}`
           : inSelection
-            ? `${FG_CYAN}:${RESET}`
+            ? `${theme.accent}:${RESET}`
             : " ";
-        lines.push(`${continuationPrefix}       ${textStyle}${wrapped[w]}${RESET}`);
+        lines.push(`${continuationPrefix}        ${textStyle}${wrapped[w]}${RESET}`);
       }
     }
 
@@ -852,6 +1067,7 @@ class BibleTerm {
   }
 
   private renderSearchBody(bodyHeight: number): string {
+    const theme = this.getTheme();
     const state = getState();
     const terms = getSearchTerms(state.searchQuery);
     const lines: string[] = [];
@@ -873,12 +1089,12 @@ class BibleTerm {
     for (let i = start; i < end; i++) {
       const r = this.searchResults[i];
       const selected = i === this.searchSelectedIndex;
-      const marker = selected ? `${FG_CYAN}>${RESET}` : " ";
+      const marker = selected ? `${theme.accent}>${RESET}` : " ";
       const ref = `${r.book} ${r.chapter}:${r.verse}`;
       const available = Math.max(10, this.termWidth - this.visibleLength(ref) - 12);
       const snippet = this.highlightTerms(this.truncate(r.text, available), terms);
       const scoreTag = `${DIM}${String(r.score).padStart(3, " ")}${RESET}`;
-      const row = `${marker} ${FG_YELLOW}${ref}${RESET} ${snippet} ${scoreTag}`;
+      const row = `${marker} ${theme.warm}${ref}${RESET} ${snippet} ${scoreTag}`;
       lines.push(selected ? `${BOLD}${row}${RESET}` : row);
     }
 
@@ -887,6 +1103,7 @@ class BibleTerm {
   }
 
   private highlightTerms(text: string, terms: string[]): string {
+    const theme = this.getTheme();
     if (terms.length === 0) return text;
     let out = text;
     const unique = Array.from(new Set(terms.filter((term) => term.length >= 2))).slice(0, 6);
@@ -896,22 +1113,24 @@ class BibleTerm {
       if (term.length < 2) continue;
       const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const regex = new RegExp(`(${safe})`, "gi");
-      out = out.replace(regex, `${FG_YELLOW}$1${RESET}`);
+      out = out.replace(regex, `${theme.warm}$1${RESET}`);
     }
     return out;
   }
 
   private renderModalBody(bodyHeight: number): string {
     if (this.modalKind === "help") return this.renderHelpBody(bodyHeight);
+    if (this.modalKind === "theme") return this.renderThemeBody(bodyHeight);
 
+    const theme = this.getTheme();
     const lines: string[] = [];
-    lines.push(`${BOLD} Select Translation ${RESET}`);
+    lines.push(`${BOLD}${theme.textBright} Select Translation ${RESET}`);
     lines.push("");
 
     for (let i = 0; i < this.availableTranslations.length; i++) {
       const t = this.availableTranslations[i];
       const selected = i === this.modalIndex;
-      const marker = selected ? `${FG_CYAN}>${RESET}` : " ";
+      const marker = selected ? `${theme.accent}>${RESET}` : " ";
       const row = `${marker} ${t}`;
       lines.push(selected ? `${BOLD}${row}${RESET}` : row);
     }
@@ -922,9 +1141,31 @@ class BibleTerm {
     return `${lines.join("\n")}\n`;
   }
 
-  private renderHelpBody(bodyHeight: number): string {
+  private renderThemeBody(bodyHeight: number): string {
+    const theme = this.getTheme();
     const lines: string[] = [];
-    lines.push(`${BOLD} Help ${RESET}`);
+    lines.push(`${BOLD}${theme.textBright} Select Theme ${RESET}`);
+    lines.push("");
+
+    for (let i = 0; i < this.themeOptions.length; i++) {
+      const option = this.themeOptions[i];
+      const selected = i === this.modalIndex;
+      const active = option.name === getState().theme ? `${DIM} current${RESET}` : "";
+      const marker = selected ? `${theme.accent}>${RESET}` : " ";
+      const row = `${marker} ${option.label}${active ? `  ${active}` : ""}`;
+      lines.push(selected ? `${BOLD}${row}${RESET}` : row);
+    }
+
+    lines.push("");
+    lines.push(`${DIM}Up/Down choose  Enter apply  Esc cancel${RESET}`);
+    while (lines.length < bodyHeight) lines.push("");
+    return `${lines.join("\n")}\n`;
+  }
+
+  private renderHelpBody(bodyHeight: number): string {
+    const theme = this.getTheme();
+    const lines: string[] = [];
+    lines.push(`${BOLD}${theme.textBright} Help ${RESET}`);
     lines.push("");
     lines.push("Navigation:");
     lines.push("  Up/Down    move verse (or book when sidebar focused)");
@@ -936,6 +1177,7 @@ class BibleTerm {
     lines.push("Actions:");
     lines.push("  /          search text or reference (john 3:16)");
     lines.push("  t          translation picker");
+    lines.push("  c          color theme picker");
     lines.push("  v          mark range start (move, then y to copy multiple verses)");
     lines.push("  y / Enter  copy current verse or marked range");
     lines.push("  Tab        toggle sidebar focus");
@@ -949,19 +1191,21 @@ class BibleTerm {
   }
 
   private renderStatusLine(): string {
+    const theme = this.getTheme();
     const state = getState();
     const hints: Record<string, string> = {
       reading:
-        "[Tab] focus [Arrows/jk] move [v] mark [Enter/y] copy [Esc] clear [/] search [t] translation [?] help [q] quit",
-      search: "[Type] query [Up/Down] select [Enter] open [Esc] close",
+        "Move jk/arrows  Mark v  Copy Enter/y  Search /  Translate t  Theme c  Help ?  Quit q",
+      search: "Type to search  Up/Down select  Enter open  Esc close",
       modal: this.modalKind === "help"
-        ? "[Esc/Enter/q] close help"
-        : "[Up/Down] choose [Enter] apply [Esc] cancel",
+        ? "Esc or Enter closes help"
+        : "Up/Down choose  Enter apply  Esc cancel",
     };
 
     const active = Date.now() < this.statusUntil ? this.statusMessage : hints[state.mode];
-    const message = this.truncate(active, this.termWidth);
-    return `${DIM}${"-".repeat(this.termWidth)}${RESET}\n${DIM}${message}${RESET}`;
+    const modeTag = `${theme.accent}${state.mode.toUpperCase()}${RESET}`;
+    const message = this.truncate(`${modeTag}  ${active}`, this.termWidth);
+    return `${DIM}${message}${RESET}`;
   }
 
   private truncate(text: string, width: number): string {
@@ -1030,6 +1274,12 @@ class BibleTerm {
     return s + " ".repeat(width - len);
   }
 
+  private padAnsiLeft(s: string, width: number): string {
+    const len = this.visibleLength(s);
+    if (len >= width) return s;
+    return " ".repeat(width - len) + s;
+  }
+
   private quit(): void {
     this.running = false;
   }
@@ -1059,15 +1309,21 @@ class BibleTerm {
 }
 
 function printHelp(): void {
-  console.log("bterm - Terminal Bible reader");
+  const banner = getCliBanner();
+  if (banner) {
+    console.log(banner);
+  } else {
+    console.log("bterm - Terminal Bible reader");
+  }
   console.log("");
   console.log("Usage:");
   console.log("  bterm");
+  console.log("  bterm upgrade");
   console.log("  bterm --help");
   console.log("  bterm --version");
   console.log("  bterm --doctor");
   console.log("");
-  console.log("Reader keys: arrows/jk move, v mark, Enter or y copy, Esc clear, / search, t translation, ? help, q quit");
+  console.log("Reader keys: arrows/jk move, v mark, Enter or y copy, Esc clear, / search, t translation, c theme, ? help, q quit");
 }
 
 function runDoctor(): void {
@@ -1106,20 +1362,66 @@ function runDoctor(): void {
   process.exit(allHealthy && healthy.length > 0 ? 0 : 1);
 }
 
-const args = process.argv.slice(2);
-if (args.includes("--help") || args.includes("-h")) {
-  printHelp();
-  process.exit(0);
+function getCliBanner(): string {
+  if (!process.stdout.isTTY) {
+    return "";
+  }
+
+  return renderSplashBanner(process.stdout.columns || 0, process.stdout.rows || 0);
 }
 
-if (args.includes("--version") || args.includes("-v")) {
-  console.log(VERSION);
-  process.exit(0);
+function getHealthyDataMissingMessage(): string {
+  return process.env.BTERM_INSTALL_MODE === "installed"
+    ? `No healthy Bible data found. Run: ${DEFAULT_UPGRADE_COMMAND}`
+    : "No healthy Bible data found. Run: bun run download && bun run install";
 }
 
-if (args.includes("--doctor")) {
-  runDoctor();
-  process.exit(0);
+async function runUpgradeCommand(args: string[]): Promise<void> {
+  const banner = getCliBanner();
+  if (banner) {
+    console.log(banner);
+  } else {
+    console.log("bterm upgrade");
+  }
+
+  const result = await runUpgrade({
+    checkOnly: args.includes("--check"),
+    force: args.includes("--force"),
+    logger: (message) => console.log(message),
+  });
+  console.log(result.message);
 }
 
-new BibleTerm().init();
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  if (args[0] === "upgrade") {
+    try {
+      await runUpgradeCommand(args.slice(1));
+      process.exit(0);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      process.exit(1);
+    }
+  }
+
+  if (args.includes("--help") || args.includes("-h")) {
+    printHelp();
+    process.exit(0);
+  }
+
+  if (args.includes("--version") || args.includes("-v")) {
+    console.log(VERSION);
+    process.exit(0);
+  }
+
+  if (args.includes("--doctor")) {
+    runDoctor();
+    process.exit(0);
+  }
+
+  await new BibleTerm().init();
+}
+
+await main();

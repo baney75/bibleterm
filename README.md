@@ -21,6 +21,7 @@ Fast offline Bible reader for the terminal (Ghostty, iTerm2, macOS Terminal, Lin
 ```bash
 bun install
 bun run install
+bterm upgrade
 bterm --doctor
 bterm
 ```
@@ -38,6 +39,12 @@ This installs:
 - App files: `~/.local/share/bibleterm/app`
 - Bible data: `~/.local/share/bibleterm/data`
 
+Update installed users with:
+
+```bash
+bterm upgrade
+```
+
 If `~/.local/bin` is not on your PATH, add it:
 
 ```bash
@@ -48,12 +55,14 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ```bash
 bterm
+bterm upgrade
 bterm --help
 bterm --version
 bterm --doctor
 ```
 
 `--doctor` validates every installed translation and exits nonzero if any installed corpus is unhealthy.
+`upgrade` pulls the latest published GitHub Release and replaces the installed app/data tree.
 
 Bundled English imports currently come from `bibleapi/bibleapi-bibles-json` as an interim source. The importer is replaceable, and maintainers should verify licensing before changing redistribution assumptions.
 
@@ -114,6 +123,10 @@ Expected healthy output includes:
 - `chapters: 1189`
 - `verses: 31103`
 - `status: ok`
+
+Installed-user recovery should prefer:
+
+- `bterm upgrade`
 
 ## Project Docs
 

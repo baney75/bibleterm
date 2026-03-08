@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildSearchIndex, getSearchTerms, search } from "./search";
+import { buildSearchIndex, findRelatedVerses, getSearchTerms, getSignificantTerms, search } from "./search";
 import type { Bible } from "./data/loader";
 
 const bible: Bible = {
@@ -60,5 +60,26 @@ describe("search", () => {
   test("ignores very short queries", () => {
     buildSearchIndex(bible);
     expect(search("a", 10)).toEqual([]);
+  });
+
+  test("extracts significant terms for context panels", () => {
+    expect(getSignificantTerms("In the beginning God created the heavens and the earth.")).toEqual([
+      "beginning",
+      "created",
+      "heavens",
+      "earth",
+    ]);
+  });
+
+  test("finds related verses while excluding the current verse", () => {
+    buildSearchIndex(bible);
+    const results = findRelatedVerses(
+      "For God so loved the world, that he gave his only begotten Son.",
+      { bookSlug: "john", chapter: 3, verse: 16 },
+      3
+    );
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((result) => result.bookSlug === "john" && result.chapter === 3 && result.verse === 16)).toBe(false);
   });
 });

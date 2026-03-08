@@ -21,6 +21,31 @@ type IndexedVerse = {
 
 let searchIndex: IndexedVerse[] = [];
 let isBuildingIndex = false;
+const COMMON_TERMS = new Set([
+  "and",
+  "but",
+  "for",
+  "from",
+  "god",
+  "had",
+  "has",
+  "have",
+  "his",
+  "into",
+  "its",
+  "not",
+  "that",
+  "the",
+  "their",
+  "them",
+  "there",
+  "they",
+  "this",
+  "upon",
+  "was",
+  "were",
+  "with",
+]);
 
 function normalizeSearchText(input: string): string {
   return input
@@ -34,6 +59,14 @@ export function getSearchTerms(query: string): string[] {
   const q = normalizeSearchText(query);
   if (!q) return [];
   return q.split(" ").filter((w) => w.length >= 2);
+}
+
+export function getSignificantTerms(text: string, limit: number = 4): string[] {
+  const terms = getSearchTerms(text)
+    .filter((term) => term.length >= 4)
+    .filter((term) => !COMMON_TERMS.has(term));
+
+  return Array.from(new Set(terms)).slice(0, limit);
 }
 
 export function buildSearchIndex(bible: Bible): void {
@@ -124,4 +157,48 @@ export function search(query: string, limit: number = 50): SearchResult[] {
   });
 
   return ranked.slice(0, limit);
+}
+
+export function findRelatedVerses(
+  text: string,
+  current: { bookSlug: string; chapter: number; verse: number },
+  limit: number = 4
+): SearchResult[] {
+  const terms = getSignificantTerms(text, 4);
+  if (terms.length === 0) {
+    return [];
+  }
+
+  const byReference = new Map<string, SearchResult>();
+
+  for (const term of terms) {
+    const hits = search(term, limit * 4);
+    for (const hit of hits) {
+      if (
+        hit.bookSlug === current.bookSlug &&
+        hit.chapter === current.chapter &&
+        hit.verse === current.verse
+      ) {
+        continue;
+      }
+
+      const key = `${hit.bookSlug}:${hit.chapter}:${hit.verse}`;
+      const existing = byReference.get(key);
+      if (existing) {
+        existing.score += hit.score;
+        continue;
+      }
+
+      byReference.set(key, { ...hit });
+    }
+  }
+
+  return Array.from(byReference.values())
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.book !== b.book) return a.book.localeCompare(b.book);
+      if (a.chapter !== b.chapter) return a.chapter - b.chapter;
+      return a.verse - b.verse;
+    })
+    .slice(0, limit);
 }
