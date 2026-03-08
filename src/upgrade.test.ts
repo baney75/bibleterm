@@ -56,6 +56,10 @@ function startReleaseServer(config: {
       }
 
       if (url.pathname === "/valid.tgz") {
+        if ((request.headers.get("accept") || "").includes("application/octet-stream")) {
+          return new Response("unsupported media type", { status: 415 });
+        }
+
         if ((config.tarballStatus || 200) !== 200) {
           return new Response("download failed", { status: config.tarballStatus });
         }

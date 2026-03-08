@@ -164,7 +164,6 @@ export async function downloadReleaseTarball(
   mkdirSync(targetDir, { recursive: true });
   const response = await fetch(getTarballUrl(release), {
     headers: {
-      Accept: "application/octet-stream",
       "User-Agent": `bterm/${VERSION}`,
     },
   });
