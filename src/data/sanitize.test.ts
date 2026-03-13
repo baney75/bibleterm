@@ -42,4 +42,15 @@ describe("sanitizeVerseText", () => {
       "The vision of Obadiah. This is what the Lord Yahweh says about Edom."
     );
   });
+
+  test("leaves KJV text unchanged when no editorial notes are present", () => {
+    const verse = sanitizeVerseText(
+      "In the beginning God created the heaven and the earth.",
+      "KJV",
+      1,
+      1
+    );
+
+    expect(verse.text).toBe("In the beginning God created the heaven and the earth.");
+  });
 });
