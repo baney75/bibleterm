@@ -69,13 +69,24 @@ function getTarballUrl(release: GitHubReleaseInfo): string {
   return process.env.BTERM_UPGRADE_TARBALL_URL || release.tarballUrl;
 }
 
+function resolveTarPath(): string {
+  const candidates = ["/usr/bin/tar", "/bin/tar"];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error("The `tar` command is required for `bterm upgrade` but was not found.");
+}
+
 function ensureTarAvailable(): void {
-  const result = Bun.spawnSync(["tar", "--version"], {
+  const tarPath = resolveTarPath();
+  const result = Bun.spawnSync([tarPath, "--version"], {
     stderr: "pipe",
     stdout: "ignore",
   });
   if (result.exitCode !== 0) {
-    throw new Error("The `tar` command is required for `bterm upgrade` but was not found.");
+    throw new Error(`The \`tar\` command at ${tarPath} failed to execute.`);
   }
 }
 
@@ -179,10 +190,10 @@ export async function downloadReleaseTarball(
 }
 
 export function extractReleaseArchive(archivePath: string, extractDir: string): string {
-  ensureTarAvailable();
+  const tarPath = resolveTarPath();
   mkdirSync(extractDir, { recursive: true });
 
-  const result = Bun.spawnSync(["tar", "-xzf", archivePath, "-C", extractDir], {
+  const result = Bun.spawnSync([tarPath, "-xzf", archivePath, "-C", extractDir], {
     stderr: "pipe",
     stdout: "ignore",
   });
