@@ -1,6 +1,8 @@
 /** bibleterm - Global State Management */
 
 import { DEFAULT_THEME, type ThemeName } from "./ui/theme";
+import { loadConfig, saveConfig } from "./config";
+
 
 export type Translation = "ASV" | "KJV" | "WEB" | "YLT";
 
@@ -42,9 +44,11 @@ export interface AppState {
   readerScroll: number;
 }
 
+const initialConfig = loadConfig();
+
 export const initialState: AppState = {
   translation: "ASV",
-  theme: DEFAULT_THEME,
+  theme: initialConfig.theme,
   focus: "reader",
   mode: "reading",
   currentBook: "genesis",
@@ -64,7 +68,13 @@ export function getState(): AppState {
 }
 
 export function setState(updates: Partial<AppState>): void {
+  const oldTheme = state.theme;
   state = { ...state, ...updates };
+
+  if (updates.theme && updates.theme !== oldTheme) {
+    saveConfig({ theme: state.theme });
+  }
+
   for (const listener of listeners) {
     listener(state);
   }

@@ -1,13 +1,12 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 1,
   "workspaces": {
     "": {
       "name": "bibleterm",
       "devDependencies": {
         "@types/bun": "latest",
         "figlet-cli": "^0.3.0",
-        "typescript": "^5",
+        "typescript": "^5.9.3",
       },
     },
   },
