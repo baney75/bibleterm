@@ -66,6 +66,7 @@
     "build:redletter": "bun scripts/build-redletter.ts",
     "ascii:generate": "bun scripts/generate-ascii.ts",
     "build": "bun build src/main.ts --compile --outfile bterm",
+    "build:css": "npx @tailwindcss/cli -i ./site/input.css -o ./site/styles.css",
     "install": "bun run scripts/install.ts",
     "install:global": "bun run build && sudo mv bterm /usr/local/bin/bterm",
     "publish:dry-run": "bun publish --dry-run --access public"
@@ -74,6 +75,9 @@
   "devDependencies": {
     "@types/bun": "latest",
     "figlet-cli": "^0.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5",
+    "tailwindcss": "^4.2.1",
+    "postcss": "^8.5.8",
+    "autoprefixer": "^10.4.27"
   }
 }
