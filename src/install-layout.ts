@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -144,7 +145,7 @@ exit 1
 `;
 
   writeFileSync(paths.launcherPath, content, "utf8");
-  Bun.spawnSync(["chmod", "+x", paths.launcherPath]);
+  chmodSync(paths.launcherPath, 0o755);
 }
 
 export function replaceInstalledTree(options: ReplaceInstalledTreeOptions): void {

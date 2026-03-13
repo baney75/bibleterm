@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     });
   }
 
-  const subprocess = Bun.spawn(["bun", installedMain, ...process.argv.slice(2)], {
+  const subprocess = Bun.spawn([process.execPath, installedMain, ...process.argv.slice(2)], {
     cwd: process.cwd(),
     env: buildInstalledEnv(paths),
     stderr: "inherit",

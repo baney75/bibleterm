@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { existsSync } from "fs";
 import { getState, setState, subscribe, type Translation } from "./state";
 import { VERSION, DEFAULT_UPGRADE_COMMAND } from "./meta";
 import {
@@ -707,12 +708,35 @@ class BibleTerm {
       verses,
     });
 
-    try {
-      Bun.spawnSync(["pbcopy"], { stdin: Buffer.from(payload) });
+    if (this.copyToClipboard(payload)) {
       this.flash(`Copied ${citation}`);
-    } catch {
+    } else {
       this.flash("Clipboard unavailable");
     }
+  }
+
+  private copyToClipboard(payload: string): boolean {
+    const candidates = [
+      { bin: "/usr/bin/pbcopy", args: [] },
+      { bin: "/usr/bin/wl-copy", args: [] },
+      { bin: "/usr/bin/xclip", args: ["-selection", "clipboard"] },
+      { bin: "/usr/bin/xsel", args: ["--clipboard", "--input"] },
+    ];
+
+    for (const { bin, args } of candidates) {
+      if (existsSync(bin)) {
+        try {
+          const result = Bun.spawnSync([bin, ...args], {
+            stdin: Buffer.from(payload),
+          });
+          if (result.exitCode === 0) return true;
+        } catch {
+          // continue to next candidate
+        }
+      }
+    }
+
+    return false;
   }
 
   private flash(message: string): void {
