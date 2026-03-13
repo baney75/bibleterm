@@ -47,11 +47,14 @@ const COMMON_TERMS = new Set([
   "with",
 ]);
 
+const REGEX_NON_ALPHANUMERIC = /[^a-z0-9\s]/g;
+const REGEX_WHITESPACE = /\s+/g;
+
 function normalizeSearchText(input: string): string {
   return input
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(REGEX_NON_ALPHANUMERIC, " ")
+    .replace(REGEX_WHITESPACE, " ")
     .trim();
 }
 
@@ -62,11 +65,23 @@ export function getSearchTerms(query: string): string[] {
 }
 
 export function getSignificantTerms(text: string, limit: number = 4): string[] {
-  const terms = getSearchTerms(text)
-    .filter((term) => term.length >= 4)
-    .filter((term) => !COMMON_TERMS.has(term));
+  if (limit <= 0) return [];
+  const normalized = normalizeSearchText(text);
+  if (!normalized) return [];
 
-  return Array.from(new Set(terms)).slice(0, limit);
+  const uniqueTerms = new Set<string>();
+  const rawTerms = normalized.split(" ");
+
+  for (const term of rawTerms) {
+    if (term.length >= 4 && !COMMON_TERMS.has(term)) {
+      uniqueTerms.add(term);
+      if (uniqueTerms.size >= limit) {
+        break;
+      }
+    }
+  }
+
+  return Array.from(uniqueTerms);
 }
 
 export function buildSearchIndex(bible: Bible): void {
