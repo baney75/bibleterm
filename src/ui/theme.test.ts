@@ -12,6 +12,9 @@ describe("theme registry", () => {
       "midnight",
       "sandstone",
       "forest",
+      "gruvbox",
+      "dracula",
+      "tokyonight"
     ]);
   });
 });

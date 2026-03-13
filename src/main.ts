@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
-import { existsSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { join } from "path";
 import { getState, setState, subscribe, type Translation } from "./state";
+import { loadConfig } from "./config";
 import { VERSION, DEFAULT_UPGRADE_COMMAND } from "./meta";
 import {
   getAvailableTranslations,
@@ -716,27 +718,7 @@ class BibleTerm {
   }
 
   private copyToClipboard(payload: string): boolean {
-    const candidates = [
-      { bin: "/usr/bin/pbcopy", args: [] },
-      { bin: "/usr/bin/wl-copy", args: [] },
-      { bin: "/usr/bin/xclip", args: ["-selection", "clipboard"] },
-      { bin: "/usr/bin/xsel", args: ["--clipboard", "--input"] },
-    ];
-
-    for (const { bin, args } of candidates) {
-      if (existsSync(bin)) {
-        try {
-          const result = Bun.spawnSync([bin, ...args], {
-            stdin: Buffer.from(payload),
-          });
-          if (result.exitCode === 0) return true;
-        } catch {
-          // continue to next candidate
-        }
-      }
-    }
-
-    return false;
+    return copyToClipboard(payload);
   }
 
   private flash(message: string): void {
@@ -1311,6 +1293,32 @@ class BibleTerm {
   }
 }
 
+
+
+function copyToClipboard(payload: string): boolean {
+  const candidates = [
+    { bin: "/usr/bin/pbcopy", args: [] },
+    { bin: "/usr/bin/wl-copy", args: [] },
+    { bin: "/usr/bin/xclip", args: ["-selection", "clipboard"] },
+    { bin: "/usr/bin/xsel", args: ["--clipboard", "--input"] },
+  ];
+
+  for (const { bin, args } of candidates) {
+    if (existsSync(bin)) {
+      try {
+        const result = Bun.spawnSync([bin, ...args], {
+          stdin: Buffer.from(payload),
+        });
+        if (result.exitCode === 0) return true;
+      } catch {
+        // continue to next candidate
+      }
+    }
+  }
+
+  return false;
+}
+
 function printHelp(): void {
   const banner = getCliBanner();
   if (banner) {
@@ -1321,7 +1329,9 @@ function printHelp(): void {
   console.log("");
   console.log("Usage:");
   console.log("  bterm");
+  console.log("  bterm <reference> (e.g. 'bterm john 3:16')");
   console.log("  bterm upgrade");
+  console.log("  bterm skill");
   console.log("  bterm --help");
   console.log("  bterm --version");
   console.log("  bterm --doctor");
@@ -1397,6 +1407,121 @@ async function runUpgradeCommand(args: string[]): Promise<void> {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+
+  if (args[0] === "skill") {
+    const home = process.env.HOME || process.cwd();
+    // Common directories for agent skills (MCP, generic .ai, or simple local config)
+    const skillDirs = [
+      join(home, ".local", "share", "mcp", "skills"),
+      join(home, ".config", "mcp", "skills"),
+      join(home, ".ai", "skills"),
+      join(home, ".agent", "skills")
+    ];
+
+    const skillContent = `# BibleTerm Skill
+Description: A tool to search for Bible verses and copy them to the clipboard.
+Usage: Run \`bterm <reference>\` to search for a verse.
+Example: \`bterm john 3:16\`
+This will print the verse to the terminal and automatically copy it to the clipboard.
+Do not use this for interactive UI. Use it as a CLI command.`;
+
+    let installedPath = "";
+
+    // Try to install in the first available standard directory, creating it if necessary
+    // We'll just pick the first one as the primary standard if none exist, or use the first that exists
+    const targetDir = skillDirs.find(d => existsSync(d)) || skillDirs[0];
+
+    try {
+      if (!existsSync(targetDir)) {
+         mkdirSync(targetDir, { recursive: true });
+      }
+      installedPath = join(targetDir, "bibleterm.md");
+      writeFileSync(installedPath, skillContent, "utf8");
+    } catch (e) {
+      console.error("Failed to install skill file:", e);
+      process.exit(1);
+    }
+
+    const prompt = `I have installed a new skill for you. You can find it at ${installedPath}. Please read it to learn how to search the Bible using bterm.`;
+    console.log("Skill installed to:", installedPath);
+    console.log("\nPrompt for your AI:");
+    console.log(prompt);
+
+    if (copyToClipboard(prompt)) {
+      console.log("\n(Prompt copied to clipboard)");
+    }
+
+    process.exit(0);
+  }
+
+  if (args.length > 0 && !args[0].startsWith("-") && args[0] !== "upgrade" && args[0] !== "doctor") {
+    // Treat as search/reference command
+    const query = args.join(" ");
+
+    // We need to do a quick load of the bible data to perform the search
+    const available = getAvailableTranslations();
+    if (available.length === 0) {
+      console.error(getHealthyDataMissingMessage());
+      process.exit(1);
+    }
+
+    const config = loadConfig();
+    const translation = available.includes("ASV") ? "ASV" : available[0];
+    const bible = loadBible(translation);
+
+    if (!bible) {
+      console.error(`Failed to load translation: ${translation}`);
+      process.exit(1);
+    }
+
+    // First try by reference
+    const parsed = parseReferenceInput(query, bible.books);
+    let resultRef = "";
+    let resultPayload = "";
+
+    if (parsed) {
+      const book = bible.books.find(b => b.slug === parsed.bookSlug);
+      if (book) {
+        const chapter = book.chapters.find(c => c.chapter === parsed.chapter);
+        if (chapter) {
+           if (parsed.verse) {
+             const verseObj = chapter.verses.find(v => v.verse === parsed.verse);
+             if (verseObj) {
+               resultRef = `${book.name} ${chapter.chapter}:${verseObj.verse}`;
+               resultPayload = `${book.name} ${chapter.chapter}:${verseObj.verse} ${translation}\n\n${verseObj.text}`;
+             }
+           } else {
+             // Print the whole chapter if no verse specified
+             resultRef = `${book.name} ${chapter.chapter}`;
+             resultPayload = `${book.name} ${chapter.chapter} ${translation}\n\n` +
+                chapter.verses.map(v => `${v.verse} ${v.text}`).join("\n");
+           }
+        }
+      }
+    } else {
+      // Try by search if reference fails
+      buildSearchIndex(bible);
+      const searchResults = search(query, 1);
+      if (searchResults.length > 0) {
+        const top = searchResults[0];
+        resultRef = `${top.book} ${top.chapter}:${top.verse}`;
+        resultPayload = `${top.book} ${top.chapter}:${top.verse} ${translation}\n\n${top.text}`;
+      }
+    }
+
+    if (resultPayload) {
+      console.log(resultPayload);
+      if (copyToClipboard(resultPayload)) {
+         console.log(`\n[2m(Copied ${resultRef} to clipboard)[0m`);
+      } else {
+         console.log(`\n[2m(Failed to copy to clipboard)[0m`);
+      }
+      process.exit(0);
+    } else {
+      console.error(`No matches found for: "${query}"`);
+      process.exit(1);
+    }
+  }
 
   if (args[0] === "upgrade") {
     try {
