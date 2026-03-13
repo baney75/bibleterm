@@ -159,6 +159,19 @@ export interface LoaderOptions {
   dataDir?: string;
 }
 
+/**
+ * Result of a Bible validation check
+ */
+interface ValidationResult {
+  valid: boolean;
+  warnings: string[];
+  stats: {
+    totalBooks: number;
+    totalChapters: number;
+    totalVerses: number;
+  };
+}
+
 export interface TranslationHealth {
   installed: boolean;
   healthy: boolean;
@@ -362,19 +375,6 @@ export function getAvailableTranslations(options: LoaderOptions = {}): Translati
 
 function isValidTranslation(code: string): code is Translation {
   return KNOWN_TRANSLATIONS.includes(code as Translation);
-}
-
-/**
- * Validate Bible data integrity
- */
-export interface ValidationResult {
-  valid: boolean;
-  warnings: string[];
-  stats: {
-    totalBooks: number;
-    totalChapters: number;
-    totalVerses: number;
-  };
 }
 
 export function validateBible(bible: Bible): ValidationResult {
