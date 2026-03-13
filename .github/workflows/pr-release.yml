@@ -1,0 +1,54 @@
+name: PR Release
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and Tag Release Commit
+        id: tag
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          BASE_VERSION=$(jq -r .version package.json | sed 's/-pr.*//')
+          VERSION="${BASE_VERSION}-pr.${PR_NUM}.${SHA_SHORT}"
+
+          # Update package.json version
+          jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
+
+          git commit -am "chore: bump version to $VERSION for PR release"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha=$SHA_SHORT" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          PR_NUM=${{ github.event.pull_request.number }}
+          SHA_SHORT="${{ steps.tag.outputs.sha }}"
+
+          gh release create "v$VERSION" \
+            --title "PR #$PR_NUM - $SHA_SHORT" \
+            --notes "Automated release for PR #$PR_NUM ($SHA_SHORT)" \
+            --latest
