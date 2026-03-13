@@ -54,7 +54,7 @@
             <h1>Bible reading built for the terminal, with a path real users can actually trust.</h1>
             <p class="lede">
               <code>bterm</code> gives you healthy ASV/KJV data, red-letter reading, fast local
-              search, range copy, themes, and a release-backed update path that stays simple after
+              search, range copy, saved themes, CLI direct search, AI agent skills, and a release-backed update path that stays simple after
               first install.
             </p>
 
@@ -73,6 +73,8 @@
             <ul class="hero-facts" aria-label="Highlights">
               <li><strong>ASV + KJV</strong><span>healthy bundled data</span></li>
               <li><strong>Offline</strong><span>search and reading stay local</span></li>
+              <li><strong>CLI Search</strong><span>get verses straight to your clipboard</span></li>
+              <li><strong>AI Skills</strong><span>built-in prompt instructions</span></li>
               <li><strong>bterm upgrade</strong><span>one command keeps users current</span></li>
             </ul>
           </div>
@@ -101,7 +103,14 @@ Genesis 1      ASV      [t] translation  [c] theme  [/] search
 [Genesis 1:1] [ASV]  JHN 1:1  HEB 11:3  PSA 33:6
 ---------------------------------------------------------------
 BOOKS                           Genesis 1                  1 / 31
-> Genesis                       1  In the beginning God created...</code></pre>
+> Genesis                       1  In the beginning God created...
+
+$ bterm john 3:16
+John 3:16 ASV
+
+For God so loved the world, that he gave his only begotten Son...
+
+(Copied John 3:16 to clipboard)</code></pre>
             </div>
           </div>
         </section>
@@ -175,6 +184,10 @@ BOOKS                           Genesis 1                  1 / 31
           </div>
           <div class="command-row">
             <article class="command-pill">
+              <span>Search & Copy Verse</span>
+              <code>bterm john 3:16</code>
+            </article>
+            <article class="command-pill">
               <span>Open the reader</span>
               <code>bterm</code>
             </article>
@@ -240,6 +253,10 @@ bterm upgrade</code></pre>
           <article class="faq-item">
             <h3>Where are the docs?</h3>
             <p>The project lives on <a href="https://github.com/baney75/bibleterm">GitHub</a>. Release notes, architecture, and contributor docs are all there.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Can I use this with an AI assistant?</h3>
+            <p>Yes. Run <code>bterm skill</code> to install an Open Standard agent skill file and get a prompt you can paste to your local AI to teach it how to search the Bible.</p>
           </article>
         </section>
       </main>
