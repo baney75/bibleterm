@@ -164,6 +164,25 @@ afterAll(() => {
 });
 
 describe("upgrade flow", () => {
+  test("rejects non-HTTPS tarball URLs provided via environment variable", async () => {
+    const installRoot = mkdtempSync(join(tmpdir(), "bterm-upgrade-insecure-"));
+    const server = startReleaseServer({});
+
+    try {
+      const proc = await runUpgradeProcess({
+        BTERM_GITHUB_RELEASE_API_URL: server.url + "releases/latest",
+        BTERM_INSTALL_ROOT: installRoot,
+        BTERM_UPGRADE_TARBALL_URL: "http://example.com/malicious.tgz"
+      });
+
+      expect(proc.exitCode).toBe(1);
+      expect(proc.stderr).toContain("Insecure tarball URL provided");
+    } finally {
+      server.stop(true);
+      rmSync(installRoot, { recursive: true, force: true });
+    }
+  });
+
   test("validateReleaseTree rejects incomplete releases", () => {
     expect(() => validateReleaseTree(join(fixtureRoot, "invalid", "release"))).toThrow(
       "Release archive is missing required path: data"

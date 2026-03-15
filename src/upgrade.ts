@@ -66,7 +66,14 @@ function parseReleaseVersion(tagName: string): string {
 }
 
 function getTarballUrl(release: GitHubReleaseInfo): string {
-  return process.env.BTERM_UPGRADE_TARBALL_URL || release.tarballUrl;
+  const envUrl = process.env.BTERM_UPGRADE_TARBALL_URL;
+  if (envUrl) {
+    if (!envUrl.startsWith("https://")) {
+      throw new Error(`Insecure tarball URL provided: ${envUrl}. Only 'https://' URLs are allowed.`);
+    }
+    return envUrl;
+  }
+  return release.tarballUrl;
 }
 
 function resolveTarPath(): string {
