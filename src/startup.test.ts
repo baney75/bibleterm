@@ -8,7 +8,7 @@ describe("startup health gate", () => {
     const dataDir = mkdtempSync(join(tmpdir(), "bibleterm-empty-"));
 
     try {
-      const proc = Bun.spawnSync(["bun", "src/main.ts"], {
+      const proc = Bun.spawnSync([process.execPath, "src/main.ts"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,
@@ -33,7 +33,7 @@ describe("startup health gate", () => {
     const dataDir = mkdtempSync(join(tmpdir(), "bibleterm-empty-installed-"));
 
     try {
-      const proc = Bun.spawnSync(["bun", "src/main.ts"], {
+      const proc = Bun.spawnSync([process.execPath, "src/main.ts"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,

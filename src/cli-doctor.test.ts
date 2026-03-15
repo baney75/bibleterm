@@ -30,7 +30,7 @@ function createDoctorFixtureDataDir(): string {
 
 describe("doctor command", () => {
   test("reports shipped ASV and KJV as healthy", () => {
-    const proc = Bun.spawnSync(["bun", "src/main.ts", "--doctor"], {
+    const proc = Bun.spawnSync([process.execPath, "src/main.ts", "--doctor"], {
       cwd: import.meta.dir + "/..",
       env: {
         ...process.env,
@@ -56,7 +56,7 @@ describe("doctor command", () => {
     const dataDir = createDoctorFixtureDataDir();
 
     try {
-      const proc = Bun.spawnSync(["bun", "src/main.ts", "--doctor"], {
+      const proc = Bun.spawnSync([process.execPath, "src/main.ts", "--doctor"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,

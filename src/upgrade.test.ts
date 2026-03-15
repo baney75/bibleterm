@@ -13,7 +13,8 @@ let validArchivePath = "";
 let invalidArchivePath = "";
 
 function createTarball(sourceRoot: string, archivePath: string): void {
-  const result = Bun.spawnSync(["tar", "-czf", archivePath, "-C", sourceRoot, "."], {
+  const tarPath = existsSync("/bin/tar") ? "/bin/tar" : "/usr/bin/tar";
+  const result = Bun.spawnSync([tarPath, "-czf", archivePath, "-C", sourceRoot, "."], {
     stderr: "pipe",
     stdout: "ignore",
   });
@@ -98,7 +99,7 @@ async function runUpgradeProcess(envOverrides: Record<string, string>): Promise<
       process.exit(1);
     }
   `;
-  const proc = Bun.spawn(["bun", "-e", script], {
+  const proc = Bun.spawn([process.execPath, "-e", script], {
     cwd: REPO_ROOT,
     env: {
       ...process.env,
@@ -122,7 +123,7 @@ async function runUpgradeProcess(envOverrides: Record<string, string>): Promise<
 }
 
 function installToRoot(installRoot: string): void {
-  const proc = Bun.spawnSync(["bun", "scripts/install.ts"], {
+  const proc = Bun.spawnSync([process.execPath, "scripts/install.ts"], {
     cwd: REPO_ROOT,
     env: {
       ...process.env,
