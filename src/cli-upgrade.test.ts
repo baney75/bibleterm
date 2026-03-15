@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 
 describe("cli upgrade command", () => {
   test("help documents bterm upgrade", () => {
-    const proc = Bun.spawnSync(["bun", "src/main.ts", "--help"], {
+    const proc = Bun.spawnSync([process.execPath, "src/main.ts", "--help"], {
       cwd: import.meta.dir + "/..",
       stderr: "pipe",
       stdout: "pipe",
@@ -20,7 +20,7 @@ describe("cli upgrade command", () => {
     const installRoot = mkdtempSync(join(tmpdir(), "bterm-cli-upgrade-"));
 
     try {
-      const installProc = Bun.spawnSync(["bun", "scripts/install.ts"], {
+      const installProc = Bun.spawnSync([process.execPath, "scripts/install.ts"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,
@@ -32,7 +32,7 @@ describe("cli upgrade command", () => {
 
       expect(installProc.exitCode).toBe(0);
 
-      const proc = Bun.spawnSync(["bun", "src/main.ts", "upgrade"], {
+      const proc = Bun.spawnSync([process.execPath, "src/main.ts", "upgrade"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,

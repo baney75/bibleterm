@@ -9,7 +9,7 @@ describe("install layout", () => {
     mkdirSync(root, { recursive: true });
 
     try {
-      const proc = Bun.spawnSync(["bun", "scripts/install.ts"], {
+      const proc = Bun.spawnSync([process.execPath, "scripts/install.ts"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,
@@ -40,7 +40,7 @@ describe("install layout", () => {
     writeFileSync(join(root, "data", "en-web", "john", "3.json"), '{"data":[]}');
 
     try {
-      const proc = Bun.spawnSync(["bun", "scripts/install.ts"], {
+      const proc = Bun.spawnSync([process.execPath, "scripts/install.ts"], {
         cwd: import.meta.dir + "/..",
         env: {
           ...process.env,

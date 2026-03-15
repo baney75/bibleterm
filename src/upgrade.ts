@@ -89,6 +89,7 @@ function resolveTarPath(): string {
 function ensureTarAvailable(): void {
   const tarPath = resolveTarPath();
   const result = Bun.spawnSync([tarPath, "--version"], {
+    env: { ...process.env, PATH: "/usr/bin:/bin" },
     stderr: "pipe",
     stdout: "ignore",
   });
@@ -201,6 +202,7 @@ export function extractReleaseArchive(archivePath: string, extractDir: string): 
   mkdirSync(extractDir, { recursive: true });
 
   const result = Bun.spawnSync([tarPath, "-xzf", archivePath, "-C", extractDir], {
+    env: { ...process.env, PATH: "/usr/bin:/bin" },
     stderr: "pipe",
     stdout: "ignore",
   });

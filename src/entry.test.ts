@@ -9,7 +9,7 @@ describe("published entry bootstrap", () => {
     const installRoot = join(root, "install");
 
     try {
-      const result = Bun.spawnSync(["bun", "src/entry.ts", "--doctor"], {
+      const result = Bun.spawnSync([process.execPath, "src/entry.ts", "--doctor"], {
         cwd: resolve(import.meta.dirname, ".."),
         env: {
           ...process.env,
